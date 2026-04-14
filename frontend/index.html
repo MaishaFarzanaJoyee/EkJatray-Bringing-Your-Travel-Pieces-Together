@@ -24,9 +24,10 @@
 
       <div class="menu">
         <a href="index.html" class="menu-btn">Home</a>
-        <a href="login.html" class="menu-btn">Login</a>
-        <a href="register.html" class="menu-btn">Register</a>
-        <a href="budget.html" class="menu-btn">Manage Budget</a>
+        <a href="login.html" id="login-link" class="menu-btn">Login</a>
+        <a href="register.html" id="register-link" class="menu-btn">Register</a>
+        <a href="budget.html" id="budget-link" class="menu-btn">Manage Budget</a>
+        <button id="logout-btn" class="button-light" style="display:none">Logout</button>
       </div>
     </nav>
 
@@ -95,5 +96,27 @@
       </section>
     </main>
   </div>
+
+  <script>
+    const token = localStorage.getItem("ekjatrayToken");
+    const loginLink = document.getElementById("login-link");
+    const registerLink = document.getElementById("register-link");
+    const budgetLink = document.getElementById("budget-link");
+    const logoutBtn = document.getElementById("logout-btn");
+
+    if (token) {
+      loginLink.style.display = "none";
+      registerLink.style.display = "none";
+      logoutBtn.style.display = "inline-flex";
+    } else {
+      budgetLink.style.display = "none";
+    }
+
+    logoutBtn.addEventListener("click", () => {
+      localStorage.removeItem("ekjatrayToken");
+      localStorage.removeItem("ekjatrayUser");
+      window.location.href = "login.html";
+    });
+  </script>
 </body>
 </html>

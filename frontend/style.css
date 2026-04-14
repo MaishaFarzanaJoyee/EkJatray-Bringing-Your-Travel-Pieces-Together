@@ -291,12 +291,14 @@ a {
 
 /* Form controls shared across pages */
 input,
+select,
 button {
 	font: inherit;
 }
 
 /* Text input look */
-input {
+input,
+select {
 	display: block;
 	width: min(100%, 420px);
 	margin: 10px 0;
@@ -307,7 +309,8 @@ input {
 	color: var(--text);
 }
 
-input:focus {
+input:focus,
+select:focus {
 	outline: 2px solid rgba(217, 119, 6, 0.35);
 	outline-offset: 2px;
 }
@@ -380,6 +383,40 @@ pre {
 .result-error {
 	border-color: #f5b6b6;
 	background: #fff6f6;
+}
+
+.pie-legend {
+	margin-top: 12px;
+	display: grid;
+	gap: 8px;
+	font-size: 0.95rem;
+	color: var(--text);
+}
+
+.legend-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.legend-color {
+	width: 12px;
+	height: 12px;
+	border-radius: 999px;
+	display: inline-block;
+	border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.legend-used {
+	background: #d97706;
+}
+
+.legend-remaining {
+	background: #16a34a;
+}
+
+.legend-empty {
+	background: #9aa4b2;
 }
 
 /* Account pages */
