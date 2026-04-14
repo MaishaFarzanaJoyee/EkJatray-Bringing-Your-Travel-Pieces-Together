@@ -22,7 +22,7 @@
         <a href="index.html" class="menu-btn">Home</a>
         <a href="login.html" class="menu-btn">Login</a>
         <a href="register.html" class="menu-btn">Register</a>
-        <a href="budget.html" class="menu-btn">Manage Budget</a>
+        <a href="budget.html" id="budget-link" class="menu-btn">Manage Budget</a>
       </div>
     </nav>
 
@@ -42,7 +42,7 @@
 
         <div class="account-form">
           <h2>Register</h2>
-          <form>
+          <form id="register-form">
             <label for="reg-name">Full Name</label>
             <input id="reg-name" type="text" placeholder="Your name" required>
 
@@ -55,6 +55,8 @@
             <button type="submit" class="account-btn">Create Account</button>
           </form>
 
+          <p id="register-msg" class="account-foot"></p>
+
           <p class="account-foot">
             Already have an account? <a href="login.html">Login here</a>
           </p>
@@ -62,5 +64,56 @@
       </section>
     </main>
   </div>
+
+  <script>
+    const form = document.getElementById("register-form");
+    const messageEl = document.getElementById("register-msg");
+    const budgetLink = document.getElementById("budget-link");
+
+    function showMessage(message, ok = true) {
+      messageEl.textContent = message;
+      messageEl.style.color = ok ? "#116530" : "#b42318";
+    }
+
+    const currentToken = localStorage.getItem("ekjatrayToken");
+    if (currentToken) {
+      window.location.href = "budget.html";
+    } else {
+      budgetLink.style.display = "none";
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const name = document.getElementById("reg-name").value.trim();
+      const email = document.getElementById("reg-email").value.trim();
+      const password = document.getElementById("reg-password").value;
+
+      try {
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, password }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showMessage(data.message || "Registration failed", false);
+          return;
+        }
+
+        localStorage.setItem("ekjatrayToken", data.token);
+        localStorage.setItem("ekjatrayUser", JSON.stringify(data.user));
+        showMessage("Account created. Redirecting...");
+
+        setTimeout(() => {
+          window.location.href = "budget.html";
+        }, 450);
+      } catch {
+        showMessage("Unable to connect to server", false);
+      }
+    });
+  </script>
 </body>
 </html>

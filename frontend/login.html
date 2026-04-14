@@ -22,7 +22,7 @@
         <a href="index.html" class="menu-btn">Home</a>
         <a href="login.html" class="menu-btn">Login</a>
         <a href="register.html" class="menu-btn">Register</a>
-        <a href="budget.html" class="menu-btn">Manage Budget</a>
+        <a href="budget.html" id="budget-link" class="menu-btn">Manage Budget</a>
       </div>
     </nav>
 
@@ -42,7 +42,7 @@
 
         <div class="account-form">
           <h2>Sign in</h2>
-          <form>
+          <form id="login-form">
             <label for="login-email">Email</label>
             <input id="login-email" type="email" placeholder="you@example.com" required>
 
@@ -52,6 +52,8 @@
             <button type="submit" class="account-btn">Login</button>
           </form>
 
+          <p id="login-msg" class="account-foot"></p>
+
           <p class="account-foot">
             Do not have an account? <a href="register.html">Register here</a>
           </p>
@@ -59,5 +61,55 @@
       </section>
     </main>
   </div>
+
+  <script>
+    const form = document.getElementById("login-form");
+    const messageEl = document.getElementById("login-msg");
+    const budgetLink = document.getElementById("budget-link");
+
+    function showMessage(message, ok = true) {
+      messageEl.textContent = message;
+      messageEl.style.color = ok ? "#116530" : "#b42318";
+    }
+
+    const currentToken = localStorage.getItem("ekjatrayToken");
+    if (currentToken) {
+      window.location.href = "budget.html";
+    } else {
+      budgetLink.style.display = "none";
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const email = document.getElementById("login-email").value.trim();
+      const password = document.getElementById("login-password").value;
+
+      try {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showMessage(data.message || "Login failed", false);
+          return;
+        }
+
+        localStorage.setItem("ekjatrayToken", data.token);
+        localStorage.setItem("ekjatrayUser", JSON.stringify(data.user));
+        showMessage("Login successful. Redirecting...");
+
+        setTimeout(() => {
+          window.location.href = "budget.html";
+        }, 450);
+      } catch {
+        showMessage("Unable to connect to server", false);
+      }
+    });
+  </script>
 </body>
 </html>

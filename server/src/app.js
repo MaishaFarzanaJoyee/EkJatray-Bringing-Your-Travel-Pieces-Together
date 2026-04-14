@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import budgetRoutes from "./modules/budget/budget.routes.js";
+import authRoutes from "./modules/auth/auth.routes.js";
 
 // Create the Express app.
 const app = express();
@@ -44,5 +45,8 @@ app.get("/budget", (req, res) => {
 
 // Connect budget API routes.
 app.use("/api/budget", budgetRoutes);
+
+// Connect auth API routes.
+app.use("/api/auth", authRoutes);
 
 export default app;
