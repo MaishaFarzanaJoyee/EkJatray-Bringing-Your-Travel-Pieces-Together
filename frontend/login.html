@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EkJatray | Login</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="account-page">
+  <div class="container">
+    <!-- Top menu bar with logo and page links -->
+    <nav class="navbar">
+      <a class="logo-area" href="index.html" aria-label="EkJatray home">
+        <img class="logo-img" src="/asset/logo.png" alt="EkJatray logo">
+        <span class="logo-text">
+          <strong>EkJatray</strong>
+          <small>Bring your travel pieces together</small>
+        </span>
+      </a>
+
+      <div class="menu">
+        <a href="index.html" class="menu-btn">Home</a>
+        <a href="login.html" class="menu-btn">Login</a>
+        <a href="register.html" class="menu-btn">Register</a>
+        <a href="budget.html" class="menu-btn">Manage Budget</a>
+      </div>
+    </nav>
+
+    <!-- Login box with info on the left and form on the right -->
+    <main class="account-main">
+      <section class="account-wrap">
+        <div class="account-side">
+          <p class="account-tag">Welcome back</p>
+          <h1>Login to your account</h1>
+          <p>Access your trip plans, budgets, and travel notes in one place.</p>
+          <ul class="account-points">
+            <li>View your active trip plans</li>
+            <li>Track group expenses quickly</li>
+            <li>Stay organized from start to finish</li>
+          </ul>
+        </div>
+
+        <div class="account-form">
+          <h2>Sign in</h2>
+          <form>
+            <label for="login-email">Email</label>
+            <input id="login-email" type="email" placeholder="you@example.com" required>
+
+            <label for="login-password">Password</label>
+            <input id="login-password" type="password" placeholder="Enter password" required>
+
+            <button type="submit" class="account-btn">Login</button>
+          </form>
+
+          <p class="account-foot">
+            Do not have an account? <a href="register.html">Register here</a>
+          </p>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
