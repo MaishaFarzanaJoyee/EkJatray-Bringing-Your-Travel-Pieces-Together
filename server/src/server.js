@@ -3,7 +3,7 @@ import app from "./app.js";
 import connectDB from "./config/db.js";
 
 // Connect MongoDB first so the app can use the database.
-connectDB();
+await connectDB();
 
 // Server port number.
 const PORT = 5000;

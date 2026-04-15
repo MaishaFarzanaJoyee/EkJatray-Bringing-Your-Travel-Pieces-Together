@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import budgetRoutes from "./modules/budget/budget.routes.js";
 import authRoutes from "./modules/auth/auth.routes.js";
+import transportRoutes from "./modules/transport/transport.routes.js";
 
 // Create the Express app.
 const app = express();
@@ -43,8 +44,16 @@ app.get("/budget", (req, res) => {
   res.sendFile(path.join(frontendPath, "budget.html"));
 });
 
+// Admin page route.
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(frontendPath, "admin.html"));
+});
+
 // Connect budget API routes.
 app.use("/api/budget", budgetRoutes);
+
+// Connect transport API routes.
+app.use("/api/transport", transportRoutes);
 
 // Connect auth API routes.
 app.use("/api/auth", authRoutes);

@@ -9,12 +9,21 @@ if (!JWT_SECRET) {
   throw new Error("Missing JWT_SECRET in environment variables");
 }
 
+const getAdminEmails = () =>
+  (process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
+const isAdminEmail = (email) => getAdminEmails().includes((email || "").toLowerCase().trim());
+
 const createToken = (user) => {
   return jwt.sign(
     {
       userId: user._id.toString(),
       email: user.email,
       name: user.name,
+      role: user.role || "user",
     },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
@@ -31,6 +40,7 @@ const getAuthResponse = (user) => {
       id: user._id,
       name: user.name,
       email: user.email,
+      role: user.role || "user",
     },
   };
 };
@@ -60,6 +70,7 @@ export const register = async (req, res) => {
       name: name.trim(),
       email: normalizedEmail,
       passwordHash,
+      role: isAdminEmail(normalizedEmail) ? "admin" : "user",
     });
 
     return res.status(201).json(getAuthResponse(user));
@@ -89,6 +100,11 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    if (isAdminEmail(normalizedEmail) && user.role !== "admin") {
+      user.role = "admin";
+      await user.save();
+    }
+
     return res.json(getAuthResponse(user));
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -96,11 +112,18 @@ export const login = async (req, res) => {
 };
 
 export const me = async (req, res) => {
+  const user = await User.findById(req.user.userId);
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
   return res.json({
     user: {
-      id: req.user.userId,
-      name: req.user.name,
-      email: req.user.email,
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role || "user",
     },
   });
 };
