@@ -108,7 +108,7 @@
         showMessage("Account created. Redirecting...");
 
         setTimeout(() => {
-          window.location.href = "budget.html";
+          window.location.href = data.user && data.user.role === "admin" ? "admin.html" : "budget.html";
         }, 450);
       } catch {
         showMessage("Unable to connect to server", false);

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EkJatray | Admin Panel</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Feature: Top navigation -->
+    <nav class="navbar">
+      <a class="logo-area" href="index.html" aria-label="EkJatray home">
+        <img class="logo-img" src="/asset/logo.png" alt="EkJatray logo">
+        <span class="logo-text">
+          <strong>EkJatray</strong>
+          <small>Bring your travel pieces together</small>
+        </span>
+      </a>
+
+      <div class="menu">
+        <a href="index.html" class="menu-btn">Home</a>
+        <a href="budget.html" class="menu-btn">Manage Budget</a>
+        <button id="logout-btn" class="button-light">Logout</button>
+      </div>
+    </nav>
+
+    <main>
+      <!-- Feature: Admin header -->
+      <section class="section">
+        <div class="section-title compact">
+          <p class="sub-title">Admin</p>
+          <h2>Transport Ticket Management</h2>
+        </div>
+
+        <div id="admin-status" class="result-box">Checking admin permission...</div>
+      </section>
+
+      <!-- Feature: Admin transport CRUD -->
+      <section id="admin-crud-section" class="section" style="display:none">
+        <div class="admin-panel-grid">
+          <article class="card">
+            <h3 id="ticket-form-title">Create Transport Ticket</h3>
+            <form id="ticket-form">
+              <label for="mode">Mode</label>
+              <select id="mode" required>
+                <option value="flight">Flight</option>
+                <option value="train">Train</option>
+                <option value="bus">Bus</option>
+              </select>
+
+              <label for="title">Title</label>
+              <input id="title" type="text" placeholder="Dhaka to Sylhet Air Express" required>
+
+              <label for="operator">Operator</label>
+              <input id="operator" type="text" placeholder="SkyRoute" required>
+
+              <label for="origin">Origin</label>
+              <select id="origin" required>
+                <option value="">Select district</option>
+              </select>
+
+              <label for="destination">Destination</label>
+              <select id="destination" required>
+                <option value="">Select district</option>
+              </select>
+
+              <label for="travelDate">Travel Date</label>
+              <input id="travelDate" type="date" required>
+
+              <label for="departureTime">Departure Time</label>
+              <input id="departureTime" type="time" required>
+
+              <label for="arrivalTime">Arrival Time</label>
+              <input id="arrivalTime" type="time" required>
+
+              <label for="price">Price</label>
+              <input id="price" type="number" min="0" step="1" required>
+
+              <label for="seatTypes">Seat Types (comma separated)</label>
+              <input id="seatTypes" type="text" placeholder="Window, Aisle, Business" required>
+
+              <label for="seatsAvailable">Seats Available</label>
+              <input id="seatsAvailable" type="number" min="0" step="1" required>
+
+              <div class="button-row">
+                <button class="button-main" type="submit" id="submit-ticket-btn">Create Ticket</button>
+                <button class="button-light" type="button" id="cancel-edit-btn" style="display:none">Cancel Edit</button>
+              </div>
+            </form>
+          </article>
+
+          <article class="card">
+            <h3>Transport Tickets</h3>
+            <button class="button-light" type="button" id="refresh-tickets-btn">Refresh List</button>
+            <div id="ticket-list" class="result-box">No tickets loaded.</div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // Feature: Auth and admin guard
+    const token = localStorage.getItem("ekjatrayToken");
+    const logoutBtn = document.getElementById("logout-btn");
+    const adminStatusEl = document.getElementById("admin-status");
+    const adminCrudSection = document.getElementById("admin-crud-section");
+
+    if (!token) {
+      window.location.href = "login.html";
+    }
+
+    logoutBtn.addEventListener("click", () => {
+      localStorage.removeItem("ekjatrayToken");
+      localStorage.removeItem("ekjatrayUser");
+      window.location.href = "login.html";
+    });
+
+    function authHeaders() {
+      return {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+    }
+
+    async function verifyAdminAccess() {
+      try {
+        const res = await fetch("/api/auth/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) {
+          adminStatusEl.textContent = result.message || "Unable to verify current user.";
+          return false;
+        }
+
+        localStorage.setItem("ekjatrayUser", JSON.stringify(result.user));
+
+        if (result.user.role !== "admin") {
+          adminStatusEl.textContent = "You are logged in, but this account does not have admin permission.";
+          return false;
+        }
+
+        adminStatusEl.textContent = `Welcome ${result.user.name}. You can manage transport tickets here.`;
+        adminCrudSection.style.display = "block";
+        return true;
+      } catch {
+        adminStatusEl.textContent = "Unable to connect to the server.";
+        return false;
+      }
+    }
+
+    // Feature: Ticket CRUD actions
+    const ticketForm = document.getElementById("ticket-form");
+    const ticketFormTitleEl = document.getElementById("ticket-form-title");
+    const submitTicketBtn = document.getElementById("submit-ticket-btn");
+    const cancelEditBtn = document.getElementById("cancel-edit-btn");
+    const refreshTicketsBtn = document.getElementById("refresh-tickets-btn");
+    const ticketListEl = document.getElementById("ticket-list");
+    const originSelect = document.getElementById("origin");
+    const destinationSelect = document.getElementById("destination");
+
+    const bangladeshDistricts = [
+      "Bagerhat",
+      "Bandarban",
+      "Barguna",
+      "Barishal",
+      "Bhola",
+      "Bogura",
+      "Brahmanbaria",
+      "Chandpur",
+      "Chattogram",
+      "Chuadanga",
+      "Cox's Bazar",
+      "Cumilla",
+      "Dhaka",
+      "Dinajpur",
+      "Faridpur",
+      "Feni",
+      "Gaibandha",
+      "Gazipur",
+      "Gopalganj",
+      "Habiganj",
+      "Jamalpur",
+      "Jashore",
+      "Jhalokati",
+      "Jhenaidah",
+      "Joypurhat",
+      "Khagrachhari",
+      "Khulna",
+      "Kishoreganj",
+      "Kurigram",
+      "Kushtia",
+      "Lakshmipur",
+      "Lalmonirhat",
+      "Madaripur",
+      "Magura",
+      "Manikganj",
+      "Meherpur",
+      "Moulvibazar",
+      "Munshiganj",
+      "Mymensingh",
+      "Naogaon",
+      "Narail",
+      "Narayanganj",
+      "Narsingdi",
+      "Natore",
+      "Netrokona",
+      "Nilphamari",
+      "Noakhali",
+      "Pabna",
+      "Panchagarh",
+      "Patuakhali",
+      "Pirojpur",
+      "Rajbari",
+      "Rajshahi",
+      "Rangamati",
+      "Rangpur",
+      "Satkhira",
+      "Shariatpur",
+      "Sherpur",
+      "Sirajganj",
+      "Sunamganj",
+      "Sylhet",
+      "Tangail",
+      "Thakurgaon",
+    ];
+
+    bangladeshDistricts.forEach((district) => {
+      const originOption = document.createElement("option");
+      originOption.value = district;
+      originOption.textContent = district;
+      originSelect.appendChild(originOption);
+
+      const destinationOption = document.createElement("option");
+      destinationOption.value = district;
+      destinationOption.textContent = district;
+      destinationSelect.appendChild(destinationOption);
+    });
+
+    let editingTicketId = "";
+
+    function formatDuration(durationMinutes) {
+      const totalMinutes = Number(durationMinutes);
+
+      if (Number.isNaN(totalMinutes) || totalMinutes < 0) {
+        return "N/A";
+      }
+
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return `${hours}h ${minutes}m`;
+    }
+
+    function getTicketPayloadFromForm() {
+      return {
+        mode: document.getElementById("mode").value,
+        title: document.getElementById("title").value.trim(),
+        operator: document.getElementById("operator").value.trim(),
+        origin: document.getElementById("origin").value.trim(),
+        destination: document.getElementById("destination").value.trim(),
+        travelDate: document.getElementById("travelDate").value,
+        departureTime: document.getElementById("departureTime").value,
+        arrivalTime: document.getElementById("arrivalTime").value,
+        price: Number(document.getElementById("price").value),
+        seatTypes: document.getElementById("seatTypes").value.split(",").map((x) => x.trim()).filter(Boolean),
+        seatsAvailable: Number(document.getElementById("seatsAvailable").value),
+      };
+    }
+
+    function resetTicketForm() {
+      ticketForm.reset();
+      editingTicketId = "";
+      ticketFormTitleEl.textContent = "Create Transport Ticket";
+      submitTicketBtn.textContent = "Create Ticket";
+      cancelEditBtn.style.display = "none";
+    }
+
+    function fillTicketForm(ticket) {
+      editingTicketId = ticket._id;
+      ticketFormTitleEl.textContent = "Edit Transport Ticket";
+      submitTicketBtn.textContent = "Update Ticket";
+      cancelEditBtn.style.display = "inline-flex";
+
+      document.getElementById("mode").value = ticket.mode;
+      document.getElementById("title").value = ticket.title;
+      document.getElementById("operator").value = ticket.operator;
+      document.getElementById("origin").value = ticket.origin;
+      document.getElementById("destination").value = ticket.destination;
+      document.getElementById("travelDate").value = ticket.travelDate;
+      document.getElementById("departureTime").value = ticket.departureTime;
+      document.getElementById("arrivalTime").value = ticket.arrivalTime;
+      document.getElementById("price").value = ticket.price;
+      document.getElementById("seatTypes").value = (ticket.seatTypes || []).join(", ");
+      document.getElementById("seatsAvailable").value = ticket.seatsAvailable;
+    }
+
+    async function loadTicketList() {
+      ticketListEl.textContent = "Loading tickets...";
+
+      try {
+        const res = await fetch("/api/transport/search");
+        const result = await res.json();
+
+        if (!res.ok) {
+          ticketListEl.textContent = result.message || result.error || "Unable to load tickets.";
+          return;
+        }
+
+        const tickets = Array.isArray(result.tickets) ? result.tickets : [];
+
+        if (tickets.length === 0) {
+          ticketListEl.textContent = "No transport tickets found. Create one from the form.";
+          return;
+        }
+
+        ticketListEl.innerHTML = tickets
+          .map(
+            (ticket) => `
+              <div class="result-item admin-ticket-item">
+                <p><strong>${ticket.title}</strong> (${ticket.mode})</p>
+                <p>${ticket.origin} -> ${ticket.destination} | ${ticket.travelDate}</p>
+                <p>Price: ${ticket.price} | Duration: ${formatDuration(ticket.duration)} | Seats: ${ticket.seatsAvailable}</p>
+                <div class="button-row">
+                  <button class="button-light" type="button" data-edit-ticket="${ticket._id}">Edit</button>
+                  <button class="button-light" type="button" data-delete-ticket="${ticket._id}">Delete</button>
+                </div>
+              </div>
+            `
+          )
+          .join("");
+
+        ticketListEl.querySelectorAll("[data-edit-ticket]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const ticket = tickets.find((item) => item._id === btn.getAttribute("data-edit-ticket"));
+            if (ticket) {
+              fillTicketForm(ticket);
+            }
+          });
+        });
+
+        ticketListEl.querySelectorAll("[data-delete-ticket]").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const ticketId = btn.getAttribute("data-delete-ticket");
+            const ok = window.confirm("Delete this ticket?");
+            if (!ok) {
+              return;
+            }
+
+            const delRes = await fetch(`/api/transport/${ticketId}`, {
+              method: "DELETE",
+              headers: authHeaders(),
+            });
+            const delResult = await delRes.json();
+
+            if (!delRes.ok) {
+              adminStatusEl.textContent = delResult.message || delResult.error || "Delete failed.";
+              return;
+            }
+
+            adminStatusEl.textContent = "Ticket deleted successfully.";
+            if (editingTicketId === ticketId) {
+              resetTicketForm();
+            }
+            loadTicketList();
+          });
+        });
+      } catch {
+        ticketListEl.textContent = "Unable to load tickets.";
+      }
+    }
+
+    ticketForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const payload = getTicketPayloadFromForm();
+      const isEdit = Boolean(editingTicketId);
+      const endpoint = isEdit ? `/api/transport/${editingTicketId}` : "/api/transport";
+      const method = isEdit ? "PUT" : "POST";
+
+      try {
+        const res = await fetch(endpoint, {
+          method,
+          headers: authHeaders(),
+          body: JSON.stringify(payload),
+        });
+        const result = await res.json();
+
+        if (!res.ok) {
+          adminStatusEl.textContent = result.message || result.error || "Save failed.";
+          return;
+        }
+
+        adminStatusEl.textContent = isEdit
+          ? "Ticket updated successfully."
+          : "Ticket created successfully.";
+        resetTicketForm();
+        loadTicketList();
+      } catch {
+        adminStatusEl.textContent = "Unable to connect to the server.";
+      }
+    });
+
+    cancelEditBtn.addEventListener("click", resetTicketForm);
+    refreshTicketsBtn.addEventListener("click", loadTicketList);
+
+    // Feature: Page init
+    (async () => {
+      const allowed = await verifyAdminAccess();
+      if (allowed) {
+        await loadTicketList();
+      }
+    })();
+  </script>
+</body>
+</html>
