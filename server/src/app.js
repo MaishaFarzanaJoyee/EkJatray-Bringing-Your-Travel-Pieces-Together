@@ -58,4 +58,6 @@ app.use("/api/transport", transportRoutes);
 // Connect auth API routes.
 app.use("/api/auth", authRoutes);
 
+app.use('/api/recommendations', require('./modules/recommendation/recommendation.routes'));
+
 export default app;

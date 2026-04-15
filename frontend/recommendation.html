@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EkJatray | 3D Tour Recommendations</title>
+    <meta name="description" content="Plan trips, search transport tickets, manage shared budgets, and keep every travel detail in one place with EkJatray.">
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <a class="logo-area" href="index.html" aria-label="EkJatray home">
+                <img class="logo-img" src="/asset/logo.png" alt="EkJatray logo">
+                <span class="logo-text">
+                    <strong>EkJatray</strong>
+                    <small>Bringing your travel pieces together</small>
+                </span>
+            </a>
+            <div class="menu">
+                <a href="index.html" class="menu-btn">Home</a>
+                <a href="login.html" id="login-link" class="menu-btn">Login</a>
+                <a href="register.html" id="register-link" class="menu-btn">Register</a>
+                <a href="budget.html" id="budget-link" class="menu-btn">Manage Budget</a>
+                <a href="admin.html" id="admin-link" class="menu-btn" style="display:none">Admin Panel</a>
+                <button id="logout-btn" class="button-light" style="display:none">Logout</button>
+            </div>
+        </nav>
+
+        <main class="max-w-6xl mx-auto p-6 mt-8">
+            <section class="bg-white p-8 rounded-xl shadow border border-gray-200 mb-8">
+                <h1 class="text-3xl font-bold text-[#2c3e50] mb-2">Find Your Optimal Tour</h1>
+                <p class="text-gray-500 mb-6">Enter your budget and preferences to get AI-matched destinations.</p>
+                
+                <div class="flex flex-col md:flex-row gap-4">
+                    <input type="number" id="budgetInput" placeholder="Max Budget (e.g., 5000)" class="border border-gray-300 p-3 rounded-lg w-full md:w-1/3 focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input type="text" id="tagsInput" placeholder="Preferences (e.g., beach, nature, relaxing)" class="border border-gray-300 p-3 rounded-lg w-full md:w-2/3 focus:ring-2 focus:ring-blue-500 outline-none">
+                    <button onclick="fetchRecommendations()" class="button-main border-none px-8 py-3 rounded-lg font-bold shadow-md cursor-pointer">Search</button>
+                </div>
+            </section>
+
+            <section id="resultsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                </section>
+        </main>
+
+        <div id="modal3D" class="hidden fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center z-50 backdrop-blur-sm">
+            <div class="bg-white rounded-xl overflow-hidden w-11/12 h-5/6 relative shadow-2xl flex flex-col">
+                <div class="bg-gray-100 px-6 py-4 flex justify-between items-center border-b border-gray-200">
+                    <h3 class="font-bold text-xl text-gray-800">Immersive 3D Preview</h3>
+                    <button onclick="closeModal()" class="text-gray-500 hover:text-red-500 font-bold text-3xl transition-colors leading-none">&times;</button>
+                </div>
+                <div id="street-view-panorama" class="flex-grow w-full bg-gray-200"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. GROUPMATE'S AUTHENTICATION SCRIPT (Keeps Navbar Working)
+        // ==========================================
+        const token = localStorage.getItem("ekjatrayToken");
+        const loginLink = document.getElementById("login-link");
+        const registerLink = document.getElementById("register-link");
+        const budgetLink = document.getElementById("budget-link");
+        const adminLink = document.getElementById("admin-link");
+        const logoutBtn = document.getElementById("logout-btn");
+        const currentUser = JSON.parse(localStorage.getItem("ekjatrayUser") || "{}");
+
+        if (token) {
+            loginLink.style.display = "none";
+            registerLink.style.display = "none";
+            logoutBtn.style.display = "inline-flex";
+            if (currentUser.role === "admin") {
+                adminLink.style.display = "inline-flex";
+            } else {
+                budgetLink.style.display = "none";
+                adminLink.style.display = "none";
+            }
+        }
+
+        logoutBtn.addEventListener("click", () => {
+            localStorage.removeItem("ekjatrayToken");
+            localStorage.removeItem("ekjatrayUser");
+            window.location.href = "login.html";
+        });
+
+        // ==========================================
+        // 2. YOUR RECOMMENDATION & 3D PREVIEW LOGIC
+        // ==========================================
+        async function fetchRecommendations() {
+            const budget = document.getElementById('budgetInput').value;
+            const tags = document.getElementById('tagsInput').value;
+            const container = document.getElementById('resultsContainer');
+            
+            container.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500">Loading your optimal tour plans...</div>`;
+
+            try {
+                // Adjust the port if your Express backend runs on something other than 5000
+                const response = await fetch(`http://localhost:5000/api/recommendations?budget=${budget}&tags=${tags}`);
+                const data = await response.json();
+                
+                container.innerHTML = ""; 
+
+                if(!data || data.length === 0) {
+                    container.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500">No destinations found for this budget.</div>`;
+                    return;
+                }
+
+                data.forEach(dest => {
+                    const tagBadges = dest.tags.map(tag => `<span class="bg-blue-50 text-blue-700 text-xs font-bold px-2 py-1 rounded border border-blue-100">${tag}</span>`).join(' ');
+
+                    const card = `
+                        <div class="card p-5 flex flex-col justify-between hover:shadow-lg transition-shadow bg-white rounded-lg border border-gray-100">
+                            <div>
+                                <div class="flex justify-between items-start mb-2">
+                                    <h3 class="text-xl font-bold text-gray-800">${dest.name}</h3>
+                                    <span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">Match: ${dest.matchScore}</span>
+                                </div>
+                                <p class="text-sm text-gray-500 mb-3">${dest.description || 'A beautiful destination to explore.'}</p>
+                                <div class="flex flex-wrap gap-1 mb-4">
+                                    ${tagBadges}
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-lg font-bold text-[#2c3e50] mb-3">BDT ${dest.cost}</p>
+                                <button onclick="open3DView(${dest.coordinates.lat}, ${dest.coordinates.lng})" 
+                                        class="w-full button-light py-2.5 rounded hover:bg-gray-100 font-medium transition-colors flex justify-center items-center gap-2 border border-gray-300">
+                                    <span>🌐</span> View in 3D
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    container.innerHTML += card;
+                });
+            } catch (error) {
+                container.innerHTML = `<div class="col-span-full text-center py-10 text-red-500">Error connecting to the Express Backend. Make sure your server is running.</div>`;
+            }
+        }
+
+        function open3DView(lat, lng) {
+            document.getElementById('modal3D').classList.remove('hidden');
+            const targetLocation = { lat: lat, lng: lng };
+            const panorama = new google.maps.StreetViewPanorama(
+                document.getElementById("street-view-panorama"),
+                {
+                    position: targetLocation,
+                    pov: { heading: 165, pitch: 0 },
+                    zoom: 1
+                }
+            );
+        }
+
+        function closeModal() {
+            document.getElementById('modal3D').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
