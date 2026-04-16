@@ -1,27 +1,15 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const destinationSchema = new mongoose.Schema({
-    name: { 
-        type: String, 
-        required: true 
-    },
-    description: { 
-        type: String 
-    },
-    imageUrl: { 
-        type: String 
-    }, // For the static image on the card
-    cost: { 
-        type: Number, 
-        required: true 
-    }, // Used to filter out places above the user's budget
-    tags: [{ 
-        type: String 
-    }], // Used by your engine to calculate the "Match Score"
+    name: { type: String, required: true },
+    description: { type: String },
+    imageUrl: { type: String }, 
+    cost: { type: Number, required: true }, 
+    tags: [{ type: String }], 
     coordinates: {
-        lat: { type: Number, required: true }, // Latitude for 3D Street View
-        lng: { type: Number, required: true }  // Longitude for 3D Street View
+        lat: { type: Number, required: true }, 
+        lng: { type: Number, required: true }  
     }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Destination', destinationSchema);
+export default mongoose.model('Destination', destinationSchema);

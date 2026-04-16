@@ -1,8 +1,8 @@
-const express = require('express');
-const router = express.Router();
-const { getRecommendations } = require('./recommendation.controller');
+import express from 'express';
+import { getRecommendations } from './recommendation.controller.js';
 
-// When the frontend makes a GET request to this route, trigger the controller
+const router = express.Router();
+
 router.get('/', getRecommendations);
 
-module.exports = router;
+export default router;
