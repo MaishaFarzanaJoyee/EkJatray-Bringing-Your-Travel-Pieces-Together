@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EkJatray | Wellness & Accommodation</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 font-sans">
+    <div class="container mx-auto p-6 max-w-6xl">
+        <h1 class="text-4xl font-bold text-[#2c3e50] mb-8">Holistic Travel Planning</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            <section class="bg-white p-6 rounded-xl shadow border border-gray-200">
+                <h2 class="text-2xl font-bold text-blue-800 mb-4">🏠 Find Lodging</h2>
+                <div class="flex gap-2 mb-4">
+                    <input type="text" id="lodgingLocation" placeholder="Enter City (e.g., Sylhet)" class="border p-2 rounded w-full">
+                    <button onclick="searchLodging()" class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700">Search</button>
+                </div>
+                <div id="lodgingResults" class="space-y-4"></div>
+            </section>
+
+            <section class="bg-white p-6 rounded-xl shadow border border-gray-200">
+                <h2 class="text-2xl font-bold text-green-800 mb-4">🌿 Verified Wellness Centers</h2>
+                <div class="flex gap-2 mb-4">
+                    <input type="text" id="wellnessLocation" placeholder="Enter City (e.g., Sylhet)" class="border p-2 rounded w-full">
+                    <button onclick="searchWellness()" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700">Search</button>
+                </div>
+                <div id="wellnessResults" class="space-y-4"></div>
+            </section>
+        </div>
+
+        <section class="mt-12 bg-gray-800 p-8 rounded-xl shadow text-white">
+            <h2 class="text-3xl font-bold mb-6">🎒 Your Unified Trip Plan</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-xl font-bold text-blue-300 border-b border-gray-600 pb-2 mb-4">Booked Stays</h3>
+                    <ul id="planLodging" class="space-y-2 text-gray-300"></ul>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-green-300 border-b border-gray-600 pb-2 mb-4">Wellness Consultations</h3>
+                    <ul id="planWellness" class="space-y-2 text-gray-300"></ul>
+                </div>
+            </div>
+            <button onclick="loadUnifiedPlan()" class="mt-8 bg-white text-gray-800 px-6 py-2 rounded font-bold hover:bg-gray-200">Refresh Itinerary</button>
+        </section>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+
+        // 1. Fetch Accommodations
+        async function searchLodging() {
+            const loc = document.getElementById('lodgingLocation').value;
+            const res = await fetch(`${API_BASE}/accommodations?location=${loc}`);
+            const data = await res.json();
+            
+            const container = document.getElementById('lodgingResults');
+            container.innerHTML = data.map(hotel => `
+                <div class="border p-4 rounded bg-gray-50 flex justify-between items-center">
+                    <div>
+                        <h4 class="font-bold text-lg">${hotel.name}</h4>
+                        <p class="text-sm text-gray-600">BDT ${hotel.price}/night | ${hotel.amenities.join(', ')}</p>
+                    </div>
+                    <button onclick="bookLodging('${hotel._id}')" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">Book</button>
+                </div>
+            `).join('');
+        }
+
+        // 2. Fetch Wellness Centers
+        async function searchWellness() {
+            const loc = document.getElementById('wellnessLocation').value;
+            const res = await fetch(`${API_BASE}/wellness?location=${loc}`);
+            const data = await res.json();
+            
+            const container = document.getElementById('wellnessResults');
+            container.innerHTML = data.map(center => `
+                <div class="border p-4 rounded bg-green-50 flex justify-between items-center">
+                    <div>
+                        <h4 class="font-bold text-lg">${center.centerName} <span class="text-xs bg-green-200 text-green-800 px-2 rounded">Verified</span></h4>
+                        <p class="text-sm text-gray-600">${center.practitionerName} (${center.specialty}) | BDT ${center.consultationFee}</p>
+                    </div>
+                    <button onclick="bookWellness('${center._id}')" class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600">Book</button>
+                </div>
+            `).join('');
+        }
+
+        // 3. Book Lodging
+        async function bookLodging(hotelId) {
+            await fetch(`${API_BASE}/plan/book-lodging`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ hotelId })
+            });
+            alert('Hotel added to your trip plan!');
+            loadUnifiedPlan();
+        }
+
+        // 4. Book Wellness
+        async function bookWellness(wellnessId) {
+            await fetch(`${API_BASE}/plan/book-wellness`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wellnessId })
+            });
+            alert('Consultation added to your trip plan!');
+            loadUnifiedPlan();
+        }
+
+        // 5. Load Unified Itinerary (Upgraded Version)
+        async function loadUnifiedPlan() {
+            try {
+                // The { cache: 'no-store' } forces the browser to ask the backend for fresh data!
+                const res = await fetch(`${API_BASE}/plan/unified-itinerary`, { cache: 'no-store' });
+                const plan = await res.json();
+                
+                // Print the raw data to the console so we can see exactly what the database sent
+                console.log("Fresh Database Data:", plan);
+
+                const lodgingContainer = document.getElementById('planLodging');
+                const wellnessContainer = document.getElementById('planWellness');
+
+                // Check if we have accommodations, otherwise show placeholder
+                if (plan.accommodations && plan.accommodations.length > 0) {
+                    lodgingContainer.innerHTML = plan.accommodations.map(a => 
+                        `<li>🏨 ${a.name} - ${a.location}</li>`
+                    ).join('');
+                } else {
+                    lodgingContainer.innerHTML = '<li>No stays booked yet.</li>';
+                }
+
+                // Check if we have wellness, otherwise show placeholder
+                if (plan.wellnessConsultations && plan.wellnessConsultations.length > 0) {
+                    wellnessContainer.innerHTML = plan.wellnessConsultations.map(w => 
+                        `<li>🌿 ${w.specialty} with ${w.practitionerName}</li>`
+                    ).join('');
+                } else {
+                    wellnessContainer.innerHTML = '<li>No consultations booked yet.</li>';
+                }
+
+            } catch (error) {
+                console.error("Error refreshing plan:", error);
+            }
+        }
+        // Load plan on startup
+        window.onload = loadUnifiedPlan;
+    </script>
+</body>
+</html>
