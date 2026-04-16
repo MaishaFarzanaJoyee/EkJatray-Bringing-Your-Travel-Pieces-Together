@@ -6,7 +6,7 @@ import nodemailer from "nodemailer";
 // Helper function to make trip id
 const makeSimpleBudgetCode = () => `TRIP-${Math.floor(1000 + Math.random() * 9000)}`;
 
-// Search budget by either Mongo ID or simple budget code.
+//ID or simple budget code.
 const getBudgetQuery = (idOrCode) => {
   if (mongoose.Types.ObjectId.isValid(idOrCode)) {
     return { $or: [{ _id: idOrCode }, { budgetCode: idOrCode }] };
@@ -174,7 +174,7 @@ export const createBudget = async (req, res) => {
     const invitesSent = inviteResults.filter((r) => r.sent).length;
     const inviteWarnings = inviteResults.filter((r) => !r.sent).map((r) => r.reason);
 
-    // Send a friendly success message.
+
     res.json({
       message: "Budget created successfully",
       budgetId: budget.budgetCode,
