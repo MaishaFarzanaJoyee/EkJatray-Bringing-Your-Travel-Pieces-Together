@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="style.css">
     
     <script src="https://cdn.tailwindcss.com"></script>
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script>
 </head>
 <body>
     <div class="container">
@@ -141,20 +140,30 @@
         }
 
         function open3DView(lat, lng) {
+            // Show the modal
             document.getElementById('modal3D').classList.remove('hidden');
-            const targetLocation = { lat: lat, lng: lng };
-            const panorama = new google.maps.StreetViewPanorama(
-                document.getElementById("street-view-panorama"),
-                {
-                    position: targetLocation,
-                    pov: { heading: 165, pitch: 0 },
-                    zoom: 1
-                }
-            );
+            
+            const container = document.getElementById("street-view-panorama");
+            
+            // The officially supported free Google Maps Satellite Embed
+            container.innerHTML = `
+                <iframe 
+                    width="100%" 
+                    height="100%" 
+                    frameborder="0" 
+                    style="border:0;" 
+                    src="https://maps.google.com/maps?q=${lat},${lng}&t=k&z=15&output=embed" 
+                    allowfullscreen>
+                </iframe>
+            `;
         }
 
         function closeModal() {
+            // Hide the modal
             document.getElementById('modal3D').classList.add('hidden');
+            
+            // Clear the iframe so the map stops playing/loading in the background
+            document.getElementById("street-view-panorama").innerHTML = "";
         }
     </script>
 </body>
