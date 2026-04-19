@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { searchTransportTickets } from "../services/transportService";
 import { bangladeshDistricts } from "../utils/bangladeshDistricts";
 
 const transportCartKey = "ekjatrayTransportCart";
-const transportApiBase = "/api/transport";
 
 function getTransportTicketId(ticket) {
   return ticket?._id || ticket?.id || "";
@@ -199,14 +199,7 @@ export default function HomePage() {
     setSummaryText("Loading transport tickets...");
 
     try {
-      const url = params.toString() ? `${transportApiBase}/search?${params.toString()}` : `${transportApiBase}/search`;
-      const res = await fetch(url);
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.message || result.error || "Unable to load transport tickets");
-      }
-
+      const result = await searchTransportTickets(Object.fromEntries(params.entries()));
       const nextTickets = Array.isArray(result.tickets) ? result.tickets : [];
       setTickets(nextTickets);
 
@@ -240,7 +233,7 @@ export default function HomePage() {
       setSummaryText(nextSummary);
     } catch (error) {
       setTickets([]);
-      setSummaryText(error.message || "Unable to load transport tickets right now.");
+      setSummaryText(error?.response?.data?.message || error?.response?.data?.error || error.message || "Unable to load transport tickets right now.");
     } finally {
       setLoading(false);
     }

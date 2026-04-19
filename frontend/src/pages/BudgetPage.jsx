@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-
-const base = "/api/budget";
+import {
+  addBudgetCollaborator,
+  addBudgetExpense,
+  createBudget,
+  deleteBudgetById,
+  getBudgetHistory,
+  getBudgetSummary,
+} from "../services/budgetService";
 
 export default function BudgetPage() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
 
   const [tripName, setTripName] = useState("");
   const [totalBudget, setTotalBudget] = useState("");
@@ -34,24 +40,8 @@ export default function BudgetPage() {
     return (user?.name && user.name.trim()) || (user?.email && user.email.trim()) || "User";
   }
 
-  function authHeaders() {
-    return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    };
-  }
-
   function isBlank(value) {
     return !value || value.trim() === "";
-  }
-
-  async function readResponse(res) {
-    const text = await res.text();
-    try {
-      return { ok: res.ok, data: JSON.parse(text) };
-    } catch {
-      return { ok: res.ok, data: text };
-    }
   }
 
   function showInputWarning(message) {
@@ -84,44 +74,36 @@ export default function BudgetPage() {
       return;
     }
 
-    const res = await fetch(`${base}/summary/${nextBudgetId.trim()}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    const result = await readResponse(res);
-
-    if (result.ok) {
-      updatePaidByFromCollaborators(result.data.collaborators || []);
-    } else {
+    try {
+      const result = await getBudgetSummary(nextBudgetId.trim());
+      updatePaidByFromCollaborators(result.collaborators || []);
+    } catch {
       updatePaidByFromCollaborators([]);
     }
   }
 
   async function loadHistory() {
-    const res = await fetch(`${base}/history`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    try {
+      const result = await getBudgetHistory();
 
-    const result = await readResponse(res);
+      if (!result.history) {
+        setHistoryList([]);
+        setHistoryMessage("Could not load history.");
+        return;
+      }
 
-    if (!result.ok || !result.data.history) {
+      if (result.history.length === 0) {
+        setHistoryList([]);
+        setHistoryMessage("No budgets found.");
+        return;
+      }
+
+      setHistoryList(result.history);
+      setHistoryMessage("");
+    } catch {
       setHistoryList([]);
       setHistoryMessage("Could not load history.");
-      return;
     }
-
-    if (result.data.history.length === 0) {
-      setHistoryList([]);
-      setHistoryMessage("No budgets found.");
-      return;
-    }
-
-    setHistoryList(result.data.history);
-    setHistoryMessage("");
   }
 
   async function makeBudget() {
@@ -130,31 +112,33 @@ export default function BudgetPage() {
       return;
     }
 
-    const res = await fetch(`${base}/create`, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({
+    try {
+      const result = await createBudget({
         tripName: tripName.trim(),
         totalBudget: Number(totalBudget),
         collaborators: createCollabs
           .split(",")
           .map((x) => x.trim())
           .filter(Boolean),
-      }),
-    });
+      });
 
-    const result = await readResponse(res);
-    setOutput(result);
+      setOutput({ ok: true, data: result });
 
-    if (result.ok && result.data && result.data.budgetId) {
-      setBudgetId(result.data.budgetId);
-      setSummaryId(result.data.budgetId);
-      setCollabBudgetId(result.data.budgetId);
+      if (result.budgetId) {
+        setBudgetId(result.budgetId);
+        setSummaryId(result.budgetId);
+        setCollabBudgetId(result.budgetId);
+      }
       setTripName("");
       setTotalBudget("");
       setCreateCollabs("");
-      updatePaidByFromCollaborators(result.data.collaborators || []);
+      updatePaidByFromCollaborators(result.collaborators || []);
       loadHistory();
+    } catch (error) {
+      setOutput({
+        ok: false,
+        data: error?.response?.data?.message || error?.response?.data?.error || "Unable to create budget",
+      });
     }
   }
 
@@ -164,24 +148,23 @@ export default function BudgetPage() {
       return;
     }
 
-    const res = await fetch(`${base}/expense`, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({
+    try {
+      const result = await addBudgetExpense({
         budgetId: budgetId.trim(),
         title: expenseTitle.trim(),
         amount: Number(amount),
         paidBy: paidBy?.trim() || getUserLabel(),
-      }),
-    });
+      });
 
-    const result = await readResponse(res);
-    setOutput(result);
-
-    if (result.ok) {
+      setOutput({ ok: true, data: result });
       setExpenseTitle("");
       setAmount("");
       checkSummary();
+    } catch (error) {
+      setOutput({
+        ok: false,
+        data: error?.response?.data?.message || error?.response?.data?.error || "Unable to add expense",
+      });
     }
   }
 
@@ -193,22 +176,20 @@ export default function BudgetPage() {
       return;
     }
 
-    const res = await fetch(`${base}/summary/${targetId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    const result = await readResponse(res);
-    setOutput(result);
-
-    if (result.ok) {
+    try {
+      const result = await getBudgetSummary(targetId);
+      setOutput({ ok: true, data: result });
       setPieData({
-        used: Number(result.data.totalSpent || 0),
-        remaining: Number(result.data.remaining || 0),
+        used: Number(result.totalSpent || 0),
+        remaining: Number(result.remaining || 0),
       });
-      setPaidByList(Array.isArray(result.data.paidBy) ? result.data.paidBy : []);
-      updatePaidByFromCollaborators(result.data.collaborators || []);
+      setPaidByList(Array.isArray(result.paidBy) ? result.paidBy : []);
+      updatePaidByFromCollaborators(result.collaborators || []);
+    } catch (error) {
+      setOutput({
+        ok: false,
+        data: error?.response?.data?.message || error?.response?.data?.error || "Unable to load summary",
+      });
     }
   }
 
@@ -218,23 +199,22 @@ export default function BudgetPage() {
       return;
     }
 
-    const res = await fetch(`${base}/collaborator`, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({
+    try {
+      const result = await addBudgetCollaborator({
         budgetId: collabBudgetId.trim(),
         email: collabEmail.trim(),
         name: collabName.trim(),
-      }),
-    });
+      });
 
-    const result = await readResponse(res);
-    setOutput(result);
-
-    if (result.ok) {
+      setOutput({ ok: true, data: result });
       setCollabEmail("");
       setCollabName("");
       loadHistory();
+    } catch (error) {
+      setOutput({
+        ok: false,
+        data: error?.response?.data?.message || error?.response?.data?.error || "Unable to add collaborator",
+      });
     }
   }
 
@@ -244,16 +224,16 @@ export default function BudgetPage() {
       return;
     }
 
-    const res = await fetch(`${base}/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    const result = await readResponse(res);
-    setOutput(result);
-    loadHistory();
+    try {
+      const result = await deleteBudgetById(id);
+      setOutput({ ok: true, data: result });
+      loadHistory();
+    } catch (error) {
+      setOutput({
+        ok: false,
+        data: error?.response?.data?.message || error?.response?.data?.error || "Unable to delete budget",
+      });
+    }
   }
 
   useEffect(() => {

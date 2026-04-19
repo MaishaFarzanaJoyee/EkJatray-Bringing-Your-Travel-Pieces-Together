@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "../context/AuthContext";
+import { getMyProfile } from "../services/authService";
+import {
+  createTransportTicket,
+  deleteTransportTicket,
+  searchTransportTickets,
+  updateTransportTicket,
+} from "../services/transportService";
 import { bangladeshDistricts } from "../utils/bangladeshDistricts";
 
 function formatDuration(durationMinutes) {
@@ -15,8 +21,6 @@ function formatDuration(durationMinutes) {
 }
 
 export default function AdminPage() {
-  const { token } = useAuth();
-
   const [adminStatus, setAdminStatus] = useState("Checking admin permission...");
   const [isAllowed, setIsAllowed] = useState(false);
   const [tickets, setTickets] = useState([]);
@@ -36,13 +40,6 @@ export default function AdminPage() {
     seatTypes: "",
     seatsAvailable: "",
   });
-
-  function authHeaders() {
-    return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    };
-  }
 
   function getTicketPayloadFromForm() {
     return {
@@ -99,19 +96,7 @@ export default function AdminPage() {
 
   async function verifyAdminAccess() {
     try {
-      const res = await fetch("/api/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        setAdminStatus(result.message || "Unable to verify current user.");
-        setIsAllowed(false);
-        return;
-      }
+      const result = await getMyProfile();
 
       localStorage.setItem("ekjatrayUser", JSON.stringify(result.user));
 
@@ -123,8 +108,8 @@ export default function AdminPage() {
 
       setAdminStatus(`Welcome ${result.user.name}. You can manage transport tickets here.`);
       setIsAllowed(true);
-    } catch {
-      setAdminStatus("Unable to connect to the server.");
+    } catch (error) {
+      setAdminStatus(error?.response?.data?.message || "Unable to connect to the server.");
       setIsAllowed(false);
     }
   }
@@ -133,14 +118,7 @@ export default function AdminPage() {
     setListMessage("Loading tickets...");
 
     try {
-      const res = await fetch("/api/transport/search");
-      const result = await res.json();
-
-      if (!res.ok) {
-        setTickets([]);
-        setListMessage(result.message || result.error || "Unable to load tickets.");
-        return;
-      }
+      const result = await searchTransportTickets();
 
       const nextTickets = Array.isArray(result.tickets) ? result.tickets : [];
       setTickets(nextTickets);
@@ -150,9 +128,9 @@ export default function AdminPage() {
       } else {
         setListMessage("");
       }
-    } catch {
+    } catch (error) {
       setTickets([]);
-      setListMessage("Unable to load tickets.");
+      setListMessage(error?.response?.data?.message || error?.response?.data?.error || "Unable to load tickets.");
     }
   }
 
@@ -162,22 +140,16 @@ export default function AdminPage() {
       return;
     }
 
-    const delRes = await fetch(`/api/transport/${ticketId}`, {
-      method: "DELETE",
-      headers: authHeaders(),
-    });
-    const delResult = await delRes.json();
-
-    if (!delRes.ok) {
-      setAdminStatus(delResult.message || delResult.error || "Delete failed.");
-      return;
+    try {
+      await deleteTransportTicket(ticketId);
+      setAdminStatus("Ticket deleted successfully.");
+      if (editingTicketId === ticketId) {
+        resetTicketForm();
+      }
+      loadTicketList();
+    } catch (error) {
+      setAdminStatus(error?.response?.data?.message || error?.response?.data?.error || "Delete failed.");
     }
-
-    setAdminStatus("Ticket deleted successfully.");
-    if (editingTicketId === ticketId) {
-      resetTicketForm();
-    }
-    loadTicketList();
   }
 
   async function submitTicketForm(event) {
@@ -185,27 +157,19 @@ export default function AdminPage() {
 
     const payload = getTicketPayloadFromForm();
     const isEdit = Boolean(editingTicketId);
-    const endpoint = isEdit ? `/api/transport/${editingTicketId}` : "/api/transport";
-    const method = isEdit ? "PUT" : "POST";
 
     try {
-      const res = await fetch(endpoint, {
-        method,
-        headers: authHeaders(),
-        body: JSON.stringify(payload),
-      });
-      const result = await res.json();
-
-      if (!res.ok) {
-        setAdminStatus(result.message || result.error || "Save failed.");
-        return;
+      if (isEdit) {
+        await updateTransportTicket(editingTicketId, payload);
+      } else {
+        await createTransportTicket(payload);
       }
 
       setAdminStatus(isEdit ? "Ticket updated successfully." : "Ticket created successfully.");
       resetTicketForm();
       loadTicketList();
-    } catch {
-      setAdminStatus("Unable to connect to the server.");
+    } catch (error) {
+      setAdminStatus(error?.response?.data?.message || error?.response?.data?.error || "Unable to connect to the server.");
     }
   }
 
