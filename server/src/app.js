@@ -5,9 +5,12 @@ import { fileURLToPath } from "url";
 import budgetRoutes from "./modules/budget/budget.routes.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import transportRoutes from "./modules/transport/transport.routes.js";
+import recommendationRoutes from "./modules/recommendation/recommendation.routes.js";
+import cors from "cors";
 
 // Create the Express app.
 const app = express();
+app.use(cors());
 
 // Get the current file path so we can find the frontend folder.
 const __filename = fileURLToPath(import.meta.url);
@@ -33,6 +36,8 @@ app.use("/api/transport", transportRoutes);
 
 // Connect auth API routes.
 app.use("/api/auth", authRoutes);
+
+app.use("/api/recommendations", recommendationRoutes);
 
 if (hasFrontendBuild) {
   // Serve React production build files.
