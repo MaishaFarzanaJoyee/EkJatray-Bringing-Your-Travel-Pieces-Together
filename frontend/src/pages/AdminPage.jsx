@@ -98,8 +98,6 @@ export default function AdminPage() {
     try {
       const result = await getMyProfile();
 
-      localStorage.setItem("ekjatrayUser", JSON.stringify(result.user));
-
       if (result.user.role !== "admin") {
         setAdminStatus("You are logged in, but this account does not have admin permission.");
         setIsAllowed(false);

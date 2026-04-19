@@ -65,7 +65,7 @@ function getTransportCartItemKey(item) {
 
 function readCartFromStorage() {
   try {
-    return JSON.parse(localStorage.getItem(transportCartKey) || "[]");
+    return JSON.parse(sessionStorage.getItem(transportCartKey) || "[]");
   } catch {
     return [];
   }
@@ -91,13 +91,13 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      localStorage.removeItem(transportCartKey);
+      sessionStorage.removeItem(transportCartKey);
       setCart([]);
     }
   }, [isAuthenticated]);
 
   useEffect(() => {
-    localStorage.setItem(transportCartKey, JSON.stringify(cart));
+    sessionStorage.setItem(transportCartKey, JSON.stringify(cart));
   }, [cart]);
 
   useEffect(() => {

@@ -2,21 +2,12 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { getMyProfile } from "../services/authService";
 
 const TOKEN_KEY = "ekjatrayToken";
-const USER_KEY = "ekjatrayUser";
 
 const AuthContext = createContext(null);
 
-function parseStoredUser() {
-  try {
-    return JSON.parse(localStorage.getItem(USER_KEY) || "null");
-  } catch {
-    return null;
-  }
-}
-
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || "");
-  const [user, setUser] = useState(() => parseStoredUser());
+  const [user, setUser] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
   const login = ({ token: nextToken, user: nextUser }) => {
@@ -32,30 +23,19 @@ export function AuthProvider({ children }) {
       localStorage.removeItem(TOKEN_KEY);
     }
 
-    if (safeUser) {
-      localStorage.setItem(USER_KEY, JSON.stringify(safeUser));
-    } else {
-      localStorage.removeItem(USER_KEY);
-    }
   };
 
   const logout = () => {
     setToken("");
     setUser(null);
     localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    localStorage.removeItem("ekjatrayTransportCart");
+    sessionStorage.removeItem("ekjatrayTransportCart");
   };
 
   const setUserProfile = (nextUser) => {
     const safeUser = nextUser || null;
     setUser(safeUser);
 
-    if (safeUser) {
-      localStorage.setItem(USER_KEY, JSON.stringify(safeUser));
-    } else {
-      localStorage.removeItem(USER_KEY);
-    }
   };
 
   useEffect(() => {
