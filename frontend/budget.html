@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EkJatray | Manage Budget</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Top menu bar with logo and page links -->
+    <nav class="navbar">
+      <a class="logo-area" href="index.html" aria-label="EkJatray home">
+        <img class="logo-img" src="/asset/logo.png" alt="EkJatray logo">
+        <span class="logo-text">
+          <strong>EkJatray</strong>
+          <small>Bring your travel pieces together</small>
+        </span>
+      </a>
+
+      <div class="menu">
+        <a href="index.html" class="menu-btn">Home</a>
+        <a href="login.html" id="login-link" class="menu-btn">Login</a>
+        <a href="register.html" id="register-link" class="menu-btn">Register</a>
+        <a href="budget.html" class="menu-btn">Manage Budget</a>
+        <button id="logout-btn" class="button-light" style="display:none">Logout</button>
+      </div>
+    </nav>
+
+    <main>
+      <!-- Main heading for budget page -->
+      <section class="section">
+        <div class="section-title compact">
+          <p class="sub-title">Budget manager</p>
+          <h2>Keep trip spending visible while you plan.</h2>
+        </div>
+
+        <div class="card-grid">
+          <!-- Form to create a new budget -->
+          <article class="card">
+            <h3>Create Budget</h3>
+            <input id="trip" placeholder="Trip Name">
+            <input id="budget" placeholder="Total Budget">
+            <input id="create-collabs" placeholder="Collaborator emails (comma separated)">
+            <button class="button-main" onclick="makeBudget()">Create</button>
+          </article>
+
+          <!-- Form to add an expense -->
+          <article class="card">
+            <h3>Add Expense</h3>
+            <input id="bid" placeholder="Budget ID">
+            <input id="title" placeholder="Expense Title">
+            <input id="amount" placeholder="Amount">
+            <select id="paidBy" aria-label="Paid By">
+              <option value="">Select payer</option>
+            </select>
+            <button class="button-main" onclick="addCost()">Add</button>
+          </article>
+
+          <!-- Forms to see budget summary and add collaborator -->
+          <article class="card">
+            <h3>Get Summary</h3>
+            <input id="sid" placeholder="Budget ID">
+            <button class="button-main" onclick="checkSummary()">Show Summary</button>
+
+            <h3>Add Collaborator</h3>
+            <input id="collab-budget-id" placeholder="Budget ID">
+            <input id="collab-email" placeholder="Collaborator Email">
+            <input id="collab-name" placeholder="Collaborator Name (optional)">
+            <button class="button-main" onclick="addCollaborator()">Add & Send Invite</button>
+          </article>
+        </div>
+        
+        <!-- Result box where messages and summary appear -->
+        <div class="section">
+          <div id="output" class="result-box">Results will appear here.</div>
+        </div>
+
+        <!-- Simple info cards below the form -->
+        <div class="card-grid">
+          <article class="card">
+            <h3>Budget tracking</h3>
+            <p>Create a trip budget, add expenses, and see what remains at a glance.</p>
+          </article>
+          <article class="card">
+            <h3>Group-friendly planning</h3>
+            <p>Build trips with shared members so the financial side stays transparent.</p>
+          </article>
+          <article class="card">
+            <h3>Simple trip workflow</h3>
+            <p>Move from planning to execution without losing context across different pages.</p>
+          </article>
+        </div>
+
+        <div class="card-grid">
+          <article class="card">
+            <h3>Used vs Remaining</h3>
+            <canvas id="budget-pie" width="240" height="240" aria-label="Budget usage chart"></canvas>
+            <div id="pie-legend" class="pie-legend">Load a budget summary to see details.</div>
+          </article>
+
+          <article class="card">
+            <h3>Paid By Collaborators</h3>
+            <div id="paid-by-list" class="result-box">No data yet.</div>
+          </article>
+
+          <article class="card">
+            <h3>Previous Travel Budgets</h3>
+            <button class="button-main" onclick="loadHistory()">Load History</button>
+            <div id="history-list" class="result-box">History will appear here.</div>
+          </article>
+        </div>
+
+
+        
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+  const token = localStorage.getItem("ekjatrayToken");
+  const user = JSON.parse(localStorage.getItem("ekjatrayUser") || "{}");
+
+  if (!token) {
+    window.location.href = "login.html";
+  }
+
+  const loginLink = document.getElementById("login-link");
+  const registerLink = document.getElementById("register-link");
+  const logoutBtn = document.getElementById("logout-btn");
+
+  loginLink.style.display = "none";
+  registerLink.style.display = "none";
+  logoutBtn.style.display = "inline-flex";
+
+  logoutBtn.addEventListener("click", () => {
+    localStorage.removeItem("ekjatrayToken");
+    localStorage.removeItem("ekjatrayUser");
+    window.location.href = "login.html";
+  });
+
+  // Base API address for budget requests.
+  const base = "/api/budget";
+  // This box shows success and error messages.
+  const outputEl = document.getElementById("output");
+  const historyEl = document.getElementById("history-list");
+  const paidByEl = document.getElementById("paid-by-list");
+  const pieCanvas = document.getElementById("budget-pie");
+  const pieCtx = pieCanvas.getContext("2d");
+  const pieLegendEl = document.getElementById("pie-legend");
+  const paidBySelect = document.getElementById("paidBy");
+  const budgetIdInput = document.getElementById("bid");
+  let budgetTypeTimer;
+
+  function getUserLabel() {
+    return (user.name && user.name.trim()) || (user.email && user.email.trim()) || "User";
+  }
+
+  function setPaidByOptions(names) {
+    const uniqueNames = [...new Set(names.map((name) => (name || "").trim()).filter(Boolean))];
+    const selected = paidBySelect.value;
+
+    paidBySelect.innerHTML = '<option value="">Select payer</option>';
+
+    uniqueNames.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      paidBySelect.appendChild(option);
+    });
+
+    if (selected && uniqueNames.includes(selected)) {
+      paidBySelect.value = selected;
+    } else if (!selected && uniqueNames.length) {
+      paidBySelect.value = uniqueNames[0];
+    }
+  }
+
+  function updatePaidByFromCollaborators(collaborators) {
+    const names = [getUserLabel()];
+
+    (collaborators || []).forEach((member) => {
+      const label = (member?.name && member.name.trim()) || (member?.email && member.email.trim()) || "";
+      if (label) {
+        names.push(label);
+      }
+    });
+
+    setPaidByOptions(names);
+  }
+
+  async function refreshPaidByForBudget(budgetId) {
+    if (!budgetId || !budgetId.trim()) {
+      setPaidByOptions([getUserLabel()]);
+      return;
+    }
+
+    const res = await fetch(base + "/summary/" + budgetId.trim(), {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const result = await readResponse(res);
+
+    if (result.ok) {
+      updatePaidByFromCollaborators(result.data.collaborators || []);
+    } else {
+      setPaidByOptions([getUserLabel()]);
+    }
+  }
+
+  function authHeaders() {
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+  }
+
+  // Show data in a nice box instead of raw JSON.
+  function renderResult(data, ok = true) {
+    outputEl.className = ok ? "result-box" : "result-box result-error";
+
+    if (typeof data === "object" && data !== null) {
+      if (data.message === "Budget created successfully") {
+        outputEl.innerHTML = `
+          <h4>Budget Created</h4>
+          <div class="result-grid">
+            <div class="result-item">
+              <span>Simple Budget ID</span>
+              <strong>${data.budgetId}</strong>
+            </div>
+            <div class="result-item">
+              <span>Trip Name</span>
+              <strong>${data.tripName}</strong>
+            </div>
+            <div class="result-item">
+              <span>Total Budget</span>
+              <strong>${data.totalBudget}</strong>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      if (data.message === "Expense added successfully") {
+        outputEl.innerHTML = `
+          <h4>Expense Added</h4>
+          <div class="result-grid">
+            <div class="result-item">
+              <span>Budget ID</span>
+              <strong>${data.budgetId}</strong>
+            </div>
+            <div class="result-item">
+              <span>Title</span>
+              <strong>${data.title}</strong>
+            </div>
+            <div class="result-item">
+              <span>Remaining</span>
+              <strong>${data.remaining}</strong>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      if (data.message) {
+        const extraLines = [];
+
+        if (data.budgetId) {
+          extraLines.push(`
+            <div class="result-item">
+              <span>Trip ID</span>
+              <strong>${data.budgetId}</strong>
+            </div>
+          `);
+        }
+
+        if (data.totalBudget !== undefined) {
+          extraLines.push(`
+            <div class="result-item">
+              <span>Total Budget</span>
+              <strong>${data.totalBudget}</strong>
+            </div>
+          `);
+        }
+
+        if (data.totalSpent !== undefined) {
+          extraLines.push(`
+            <div class="result-item">
+              <span>Total Spent</span>
+              <strong>${data.totalSpent}</strong>
+            </div>
+          `);
+        }
+
+        if (data.remaining !== undefined) {
+          extraLines.push(`
+            <div class="result-item">
+              <span>Remaining</span>
+              <strong>${data.remaining}</strong>
+            </div>
+          `);
+        }
+
+        outputEl.innerHTML = `
+          <h4>${ok ? "Message" : "Error"}</h4>
+          <p>${data.message}</p>
+          ${extraLines.length ? `<div class="result-grid">${extraLines.join("")}</div>` : ""}
+        `;
+        return;
+      }
+
+      if (
+        Object.prototype.hasOwnProperty.call(data, "totalBudget") &&
+        Object.prototype.hasOwnProperty.call(data, "totalSpent") &&
+        Object.prototype.hasOwnProperty.call(data, "remaining")
+      ) {
+        outputEl.innerHTML = `
+          <h4>Budget Summary</h4>
+          <div class="result-grid">
+            <div class="result-item">
+              <span>Budget ID</span>
+              <strong>${data.budgetId || "N/A"}</strong>
+            </div>
+            <div class="result-item">
+              <span>Total Budget</span>
+              <strong>${data.totalBudget}</strong>
+            </div>
+            <div class="result-item">
+              <span>Total Spent</span>
+              <strong>${data.totalSpent}</strong>
+            </div>
+            <div class="result-item">
+              <span>Remaining</span>
+              <strong>${data.remaining}</strong>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const pretty = JSON.stringify(data, null, 2);
+      outputEl.innerHTML = `<h4>Response</h4><pre>${pretty}</pre>`;
+      return;
+    }
+
+    outputEl.textContent = data || "No data found.";
+  }
+
+  // Show the same message when a field is blank.
+  function showInputWarning(message) {
+    renderResult(message, false);
+  }
+
+  // Check if a value is empty.
+  function isBlank(value) {
+    return !value || value.trim() === "";
+  }
+
+  // Read response and try to convert JSON.
+  async function readResponse(res) {
+    const text = await res.text();
+    try {
+      return { ok: res.ok, data: JSON.parse(text) };
+    } catch {
+      return { ok: res.ok, data: text };
+    }
+  }
+
+  function drawPie(used, remaining) {
+    const total = used + remaining;
+    pieCtx.clearRect(0, 0, pieCanvas.width, pieCanvas.height);
+
+    if (total <= 0) {
+      pieCtx.fillStyle = "#9aa4b2";
+      pieCtx.beginPath();
+      pieCtx.arc(120, 120, 90, 0, Math.PI * 2);
+      pieCtx.fill();
+      pieLegendEl.innerHTML = `
+        <div class="legend-row">
+          <span class="legend-color legend-empty"></span>
+          <span>No expenses yet</span>
+        </div>
+      `;
+      return;
+    }
+
+    const usedAngle = (used / total) * Math.PI * 2;
+    const usedPercent = ((used / total) * 100).toFixed(1);
+    const remainingPercent = ((remaining / total) * 100).toFixed(1);
+
+    pieCtx.beginPath();
+    pieCtx.moveTo(120, 120);
+    pieCtx.fillStyle = "#d97706";
+    pieCtx.arc(120, 120, 90, 0, usedAngle);
+    pieCtx.fill();
+
+    pieCtx.beginPath();
+    pieCtx.moveTo(120, 120);
+    pieCtx.fillStyle = "#16a34a";
+    pieCtx.arc(120, 120, 90, usedAngle, Math.PI * 2);
+    pieCtx.fill();
+
+    pieLegendEl.innerHTML = `
+      <div class="legend-row">
+        <span class="legend-color legend-used"></span>
+        <span>Used: ${used} (${usedPercent}%)</span>
+      </div>
+      <div class="legend-row">
+        <span class="legend-color legend-remaining"></span>
+        <span>Remaining: ${remaining} (${remainingPercent}%)</span>
+      </div>
+    `;
+  }
+
+  function renderPaidBy(list) {
+    if (!Array.isArray(list) || list.length === 0) {
+      paidByEl.innerHTML = "No expenses yet.";
+      return;
+    }
+
+    paidByEl.innerHTML = list
+      .map((item) => `<p><strong>${item.name}:</strong> ${item.amount}</p>`)
+      .join("");
+  }
+
+  // Create a new budget.
+  async function makeBudget() {
+    const tripName = document.getElementById("trip").value;
+    const budgetValue = document.getElementById("budget").value;
+
+    if (isBlank(tripName) || isBlank(budgetValue)) {
+      showInputWarning("Please provide Trip Name and Total Budget");
+      return;
+    }
+
+    const res = await fetch(base + "/create", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        tripName: tripName.trim(),
+        totalBudget: Number(budgetValue),
+        collaborators: document
+          .getElementById("create-collabs")
+          .value.split(",")
+          .map((x) => x.trim())
+          .filter(Boolean),
+      })
+    });
+    const result = await readResponse(res);
+    renderResult(result.data, result.ok);
+
+    if (result.ok && result.data && result.data.budgetId) {
+      document.getElementById("bid").value = result.data.budgetId;
+      document.getElementById("sid").value = result.data.budgetId;
+      document.getElementById("trip").value = "";
+      document.getElementById("budget").value = "";
+      document.getElementById("create-collabs").value = "";
+      document.getElementById("collab-budget-id").value = result.data.budgetId;
+      updatePaidByFromCollaborators(result.data.collaborators || []);
+      loadHistory();
+    }
+  }
+
+  // Add a new expense to a budget.
+  async function addCost() {
+    const budgetId = document.getElementById("bid").value;
+    const title = document.getElementById("title").value;
+    const amountValue = document.getElementById("amount").value;
+
+    if (isBlank(budgetId) || isBlank(title) || isBlank(amountValue)) {
+      showInputWarning("Please provide the correct Trip-ID, Expense Title, and Amount");
+      return;
+    }
+
+    const res = await fetch(base + "/expense", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        budgetId: budgetId.trim(),
+        title: title.trim(),
+        amount: Number(amountValue),
+        paidBy: paidBySelect.value.trim() || getUserLabel(),
+      })
+    });
+    const result = await readResponse(res);
+    renderResult(result.data, result.ok);
+
+    if (result.ok) {
+      document.getElementById("title").value = "";
+      document.getElementById("amount").value = "";
+      checkSummary();
+    }
+  }
+
+  // Show summary of one budget.
+  async function checkSummary() {
+    const id = document.getElementById("sid").value;
+
+    if (isBlank(id)) {
+      showInputWarning("Please provide the correct Trip-ID");
+      return;
+    }
+
+    const res = await fetch(base + "/summary/" + id, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const result = await readResponse(res);
+    renderResult(result.data, result.ok);
+
+    if (result.ok) {
+      drawPie(result.data.totalSpent, result.data.remaining);
+      renderPaidBy(result.data.paidBy);
+      updatePaidByFromCollaborators(result.data.collaborators || []);
+    }
+  }
+
+  async function addCollaborator() {
+    const budgetId = document.getElementById("collab-budget-id").value.trim();
+    const email = document.getElementById("collab-email").value.trim();
+    const name = document.getElementById("collab-name").value.trim();
+
+    if (!budgetId || !email) {
+      showInputWarning("Please provide Budget ID and collaborator email");
+      return;
+    }
+
+    const res = await fetch(base + "/collaborator", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ budgetId, email, name }),
+    });
+
+    const result = await readResponse(res);
+    renderResult(result.data, result.ok);
+
+    if (result.ok) {
+      document.getElementById("collab-email").value = "";
+      document.getElementById("collab-name").value = "";
+      loadHistory();
+    }
+  }
+
+  async function deleteBudget(id) {
+    const ok = window.confirm(`Delete budget ${id}? This will remove all expenses.`);
+    if (!ok) {
+      return;
+    }
+
+    const res = await fetch(base + "/" + id, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const result = await readResponse(res);
+    renderResult(result.data, result.ok);
+    loadHistory();
+  }
+
+  async function loadHistory() {
+    const res = await fetch(base + "/history", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const result = await readResponse(res);
+
+    if (!result.ok || !result.data.history) {
+      historyEl.textContent = "Could not load history.";
+      return;
+    }
+
+    if (result.data.history.length === 0) {
+      historyEl.textContent = "No budgets found.";
+      return;
+    }
+
+    historyEl.innerHTML = result.data.history
+      .map((item) => {
+        const deleteButton = item.isOwner
+          ? `<button class="button-light" onclick="deleteBudget('${item.budgetId}')">Delete</button>`
+          : "";
+
+        return `
+          <div class="result-item">
+            <p><strong>${item.tripName}</strong> (${item.budgetId})</p>
+            <p>Total: ${item.totalBudget} | Used: ${item.totalSpent} | Left: ${item.remaining}</p>
+            <p>Collaborators: ${item.collaborators.map((x) => x.email).join(", ") || "None"}</p>
+            <button class="button-main" onclick="document.getElementById('sid').value='${item.budgetId}';checkSummary();">Open</button>
+            ${deleteButton}
+          </div>
+        `;
+      })
+      .join("");
+  }
+
+  budgetIdInput.addEventListener("change", () => {
+    refreshPaidByForBudget(budgetIdInput.value);
+  });
+
+  budgetIdInput.addEventListener("blur", () => {
+    refreshPaidByForBudget(budgetIdInput.value);
+  });
+
+  budgetIdInput.addEventListener("input", () => {
+    clearTimeout(budgetTypeTimer);
+    budgetTypeTimer = setTimeout(() => {
+      refreshPaidByForBudget(budgetIdInput.value);
+    }, 450);
+  });
+
+  setPaidByOptions([getUserLabel()]);
+  loadHistory();
+  </script>
+</body>
+</html>
+
