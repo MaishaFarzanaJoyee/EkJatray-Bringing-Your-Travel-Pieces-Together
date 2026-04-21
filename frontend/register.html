@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EkJatray | Register</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="account-page">
+  <div class="container">
+    <!-- Top menu bar with logo and page links -->
+    <nav class="navbar">
+      <a class="logo-area" href="index.html" aria-label="EkJatray home">
+        <img class="logo-img" src="/asset/logo.png" alt="EkJatray logo">
+        <span class="logo-text">
+          <strong>EkJatray</strong>
+          <small>Bring your travel pieces together</small>
+        </span>
+      </a>
+
+      <div class="menu">
+        <a href="index.html" class="menu-btn">Home</a>
+        <a href="login.html" class="menu-btn">Login</a>
+        <a href="register.html" class="menu-btn">Register</a>
+        <a href="budget.html" id="budget-link" class="menu-btn">Manage Budget</a>
+      </div>
+    </nav>
+
+    <!-- Register box with info on the left and form on the right -->
+    <main class="account-main">
+      <section class="account-wrap">
+        <div class="account-side">
+          <p class="account-tag">Get started</p>
+          <h1>Create your account</h1>
+          <p>Set up your profile and start building better, stress-free travel plans.</p>
+          <ul class="account-points">
+            <li>Start planning in minutes</li>
+            <li>Manage trips and expenses together</li>
+            <li>Keep all travel details organized</li>
+          </ul>
+        </div>
+
+        <div class="account-form">
+          <h2>Register</h2>
+          <form id="register-form">
+            <label for="reg-name">Full Name</label>
+            <input id="reg-name" type="text" placeholder="Your name" required>
+
+            <label for="reg-email">Email</label>
+            <input id="reg-email" type="email" placeholder="you@example.com" required>
+
+            <label for="reg-password">Password</label>
+            <input id="reg-password" type="password" placeholder="Create password" required>
+
+            <button type="submit" class="account-btn">Create Account</button>
+          </form>
+
+          <p id="register-msg" class="account-foot"></p>
+
+          <p class="account-foot">
+            Already have an account? <a href="login.html">Login here</a>
+          </p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const form = document.getElementById("register-form");
+    const messageEl = document.getElementById("register-msg");
+    const budgetLink = document.getElementById("budget-link");
+
+    function showMessage(message, ok = true) {
+      messageEl.textContent = message;
+      messageEl.style.color = ok ? "#116530" : "#b42318";
+    }
+
+    const currentToken = localStorage.getItem("ekjatrayToken");
+    if (currentToken) {
+      window.location.href = "budget.html";
+    } else {
+      budgetLink.style.display = "none";
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const name = document.getElementById("reg-name").value.trim();
+      const email = document.getElementById("reg-email").value.trim();
+      const password = document.getElementById("reg-password").value;
+
+      try {
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, password }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showMessage(data.message || "Registration failed", false);
+          return;
+        }
+
+        localStorage.setItem("ekjatrayToken", data.token);
+        localStorage.setItem("ekjatrayUser", JSON.stringify(data.user));
+        showMessage("Account created. Redirecting...");
+
+        setTimeout(() => {
+          window.location.href = "budget.html";
+        }, 450);
+      } catch {
+        showMessage("Unable to connect to server", false);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { loginUser } from "../services/authService";
+import { getMyProfile, loginUser } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 
 export default function LoginPage() {
@@ -28,13 +28,23 @@ export default function LoginPage() {
     try {
       const data = await loginUser(formData);
       const token = data?.token || data?.accessToken || "";
-      const user = data?.user || data?.data?.user || null;
+      const initialUser = data?.user || data?.data?.user || null;
 
       if (!token) {
         throw new Error("Login succeeded but token was not returned.");
       }
 
-      login({ token, user });
+      login({ token, user: initialUser });
+
+      try {
+        const profile = await getMyProfile();
+        if (profile?.user) {
+          login({ token, user: profile.user });
+        }
+      } catch {
+        // Keep the initial login user if /me request fails temporarily.
+      }
+
       const redirectPath = location.state?.from?.pathname || "/";
       navigate(redirectPath, { replace: true });
     } catch (err) {
