@@ -73,7 +73,7 @@ async function recalculateProviderRating(targetType, targetId, targetName = "") 
       totalRating,
       averageRating,
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 }
 

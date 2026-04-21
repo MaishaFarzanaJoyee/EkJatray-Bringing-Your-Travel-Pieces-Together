@@ -6,7 +6,7 @@ import StayRecord from "./stayRecord.model.js";
 import ProviderRating from "./providerRating.model.js";
 import { runDistrictReviewSeed } from "./reviewSeed.service.js";
 
-const REVIEW_ALLOWED_STATUS = ["staying", "completed"];
+const REVIEW_ALLOWED_STATUS = ["booked", "staying", "completed"];
 
 function toSafeText(value = "") {
   return value.toString().trim();
@@ -181,6 +181,48 @@ export async function getMyEligibleStays(req, res) {
     }).sort({ updatedAt: -1 });
 
     return res.json({ stays });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+}
+
+export async function getMyBookingsForReview(req, res) {
+  try {
+    const userId = req?.user?.userId;
+
+    const bookings = await StayRecord.find({
+      userId,
+      targetType: { $in: ["hotel", "transport"] },
+      status: { $in: REVIEW_ALLOWED_STATUS },
+    }).sort({ updatedAt: -1 });
+
+    const stayIds = bookings.map((row) => row._id.toString());
+    const reviews = await ServiceReview.find({
+      userId,
+      stayRecordId: { $in: stayIds },
+    });
+
+    const reviewMap = new Map(reviews.map((row) => [row.stayRecordId, row]));
+
+    const enriched = bookings.map((booking) => {
+      const stayId = booking._id.toString();
+      const review = reviewMap.get(stayId) || null;
+
+      return {
+        ...booking.toObject(),
+        stayRecordId: stayId,
+        canReview: booking.status !== "cancelled",
+        review: review
+          ? {
+              id: review._id.toString(),
+              rating: review.rating,
+              reviewText: review.reviewText,
+            }
+          : null,
+      };
+    });
+
+    return res.json({ bookings: enriched });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
