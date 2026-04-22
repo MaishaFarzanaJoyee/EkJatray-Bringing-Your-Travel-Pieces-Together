@@ -6,7 +6,7 @@ import {
   createReview,
   deleteReview,
   getHotelsByDistrict,
-  getMyEligibleStays,
+  getMyBookingsForReview,
   getMyReviews,
   getPublicProviderProfile,
   getPublicReviews,
@@ -38,7 +38,7 @@ export default function ReviewPage() {
   const [expandedHotelReviews, setExpandedHotelReviews] = useState([]);
   const [publicMessage, setPublicMessage] = useState("Showing latest public reviews.");
 
-  const [eligibleStays, setEligibleStays] = useState([]);
+  const [myBookings, setMyBookings] = useState([]);
   const [myReviews, setMyReviews] = useState([]);
   const [form, setForm] = useState(defaultForm);
   const [editingReviewId, setEditingReviewId] = useState("");
@@ -64,17 +64,17 @@ export default function ReviewPage() {
 
   async function loadPrivateData() {
     if (!isAuthenticated) {
-      setEligibleStays([]);
+      setMyBookings([]);
       setMyReviews([]);
       return;
     }
 
     try {
-      const [stayResult, reviewResult] = await Promise.all([getMyEligibleStays(), getMyReviews()]);
-      setEligibleStays(Array.isArray(stayResult.stays) ? stayResult.stays : []);
+      const [bookingResult, reviewResult] = await Promise.all([getMyBookingsForReview(), getMyReviews()]);
+      setMyBookings(Array.isArray(bookingResult.bookings) ? bookingResult.bookings : []);
       setMyReviews(Array.isArray(reviewResult.reviews) ? reviewResult.reviews : []);
     } catch {
-      setEligibleStays([]);
+      setMyBookings([]);
       setMyReviews([]);
     }
   }
@@ -144,7 +144,7 @@ export default function ReviewPage() {
 
   function onSelectStay(event) {
     const stayId = event.target.value;
-    const selected = eligibleStays.find((row) => row._id === stayId);
+    const selected = myBookings.find((row) => row._id === stayId || row.stayRecordId === stayId);
 
     if (!selected) {
       setForm(defaultForm);
@@ -230,11 +230,11 @@ export default function ReviewPage() {
   }
 
   const eligibleOptions = useMemo(() => {
-    return eligibleStays.map((stay) => ({
+    return myBookings.map((stay) => ({
       value: stay._id,
-      label: `${stay.targetName} (${stay.targetType}, ${stay.districtName || "district unknown"}) - ${stay.status}`,
+      label: `${stay.targetName} (${stay.targetType}, ${stay.districtName || "district unknown"}) - ${stay.status}${stay.review ? " - reviewed" : ""}`,
     }));
-  }, [eligibleStays]);
+  }, [myBookings]);
 
   return (
     <main>
@@ -367,18 +367,50 @@ export default function ReviewPage() {
           </p>
         ) : (
           <>
-            <p className="transport-muted">
-              You can review only stays with status staying or completed.
-            </p>
+            {!myBookings.length ? (
+              <p className="transport-muted">
+                No booked hotel or transportation found for your account yet.
+              </p>
+            ) : (
+              <div className="review-list-grid">
+                {myBookings.map((booking) => (
+                  <article className="review-row" key={booking._id}>
+                    <div>
+                      <h4>{booking.targetName}</h4>
+                      <p className="transport-muted">
+                        {booking.targetType} | {booking.districtName || "unknown district"}
+                      </p>
+                    </div>
+                    <p className="transport-muted">Status: {booking.status}</p>
+                    {booking.review ? (
+                      <p className="transport-muted">Reviewed: {booking.review.rating}/5</p>
+                    ) : (
+                      <p className="transport-muted">Not reviewed yet</p>
+                    )}
+                    <div className="button-row">
+                      <button
+                        className="button-light"
+                        type="button"
+                        onClick={() =>
+                          onSelectStay({ target: { value: booking._id } })
+                        }
+                      >
+                        Review This Booking
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
 
             {infoMessage ? <p className="form-success">{infoMessage}</p> : null}
             {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
 
             <form className="review-form" onSubmit={onSubmitReview}>
               <label>
-                My Eligible Stay
+                My Booked Service
                 <select value={form.stayRecordId} onChange={onSelectStay} required>
-                  <option value="">Select a stay</option>
+                  <option value="">Select a booked service</option>
                   {eligibleOptions.map((option) => (
                     <option value={option.value} key={option.value}>
                       {option.label}

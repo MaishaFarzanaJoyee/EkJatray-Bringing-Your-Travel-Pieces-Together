@@ -7,6 +7,10 @@ import HomePage from "./pages/HomePage";
 import ItineraryPage from "./pages/ItineraryPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import ReviewPage from "./pages/ReviewPage";
+import CartCheckoutPage from "./pages/CartCheckoutPage";
+import CheckoutPage from "./pages/CheckoutPage";
+import CheckoutSuccessPage from "./pages/CheckoutSuccessPage";
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -42,6 +46,31 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/reviews" element={<ReviewPage />} />
+        <Route
+          path="/cart"
+          element={
+            <ProtectedRoute>
+              <CartCheckoutPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/checkout"
+          element={
+            <ProtectedRoute>
+              <CheckoutPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/checkout/success"
+          element={
+            <ProtectedRoute>
+              <CheckoutSuccessPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/budget"
           element={

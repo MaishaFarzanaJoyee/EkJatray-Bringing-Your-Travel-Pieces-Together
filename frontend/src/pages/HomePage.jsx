@@ -5,33 +5,8 @@ import { checkoutTrip } from "../services/itineraryService";
 import { searchLocalDiscoveryItems } from "../services/localDiscoveryService";
 import { searchSafetyContacts } from "../services/safetyService";
 import { searchTransportTickets } from "../services/transportService";
+import { addTransportTicketToCart } from "../services/cartCheckoutService";
 import { bangladeshDistricts } from "../utils/bangladeshDistricts";
-
-const transportCartKey = "ekjatrayTransportCart";
-const localDiscoveryPlanKey = "ekjatrayLocalDiscoveryPlan";
-const safetyCategoryOptions = [
-  { value: "all", label: "All contacts" },
-  { value: "tourist-police", label: "Tourist police" },
-  { value: "hospital", label: "Hospitals" },
-  { value: "guide", label: "Registered guides" },
-  { value: "general-emergency", label: "Emergency hotlines" },
-  { value: "transport-help", label: "Transport help" },
-  { value: "embassy", label: "Embassy support" },
-];
-
-const safetyCategoryLabels = safetyCategoryOptions.reduce((all, item) => {
-  all[item.value] = item.label;
-  return all;
-}, {});
-const localDiscoveryTypeOptions = [
-  { value: "all", label: "Rentals and experiences" },
-  { value: "vehicle-rental", label: "Vehicle rentals" },
-  { value: "local-experience", label: "Local workshops" },
-];
-const localDiscoveryTypeLabels = {
-  "vehicle-rental": "Vehicle rental",
-  "local-experience": "Local workshop",
-};
 
 function getTransportTicketId(ticket) {
   return ticket?._id || ticket?.id || "";
@@ -82,59 +57,6 @@ function formatDuration(durationMinutes) {
   return `${hours}h ${minutes}m`;
 }
 
-function getTransportCartItemKey(item) {
-  if (item?.cartId) {
-    return item.cartId;
-  }
-
-  return `${item?.id || ""}:${item?.seat || ""}:${item?.seatCount || 1}`;
-}
-
-function readCartFromStorage() {
-  try {
-    return JSON.parse(sessionStorage.getItem(transportCartKey) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function readLocalPlanFromStorage() {
-  try {
-    return JSON.parse(sessionStorage.getItem(localDiscoveryPlanKey) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function getSafetyCategoryLabel(category) {
-  return safetyCategoryLabels[category] || "Support contact";
-}
-
-function getPhoneHref(phone) {
-  const value = (phone || "").replace(/[^\d+]/g, "");
-  return value ? `tel:${value}` : "#";
-}
-
-function getWhatsappHref(phone, destination) {
-  const value = (phone || "").replace(/[^\d+]/g, "");
-  const message = encodeURIComponent(`Need assistance in ${destination}. Please share urgent local support details.`);
-  return value ? `https://wa.me/${value.replace(/^\+/, "")}?text=${message}` : "#";
-}
-
-function getSosHref(phone, destination, name) {
-  const value = (phone || "").replace(/[^\d+]/g, "");
-  const message = encodeURIComponent(`SOS from EkJatray: I need urgent help in ${destination}. Please contact me as soon as possible. Contact: ${name}.`);
-  return value ? `sms:${value}?body=${message}` : "#";
-}
-
-function getLocalItemKey(item) {
-  return item?.planId || item?.id || "";
-}
-
-function getLocalTypeLabel(type) {
-  return localDiscoveryTypeLabels[type] || "Local booking";
-}
-
 export default function HomePage() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -149,40 +71,8 @@ export default function HomePage() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [summaryText, setSummaryText] = useState("Use the filters above to find tickets.");
-  const [cart, setCart] = useState(() => readCartFromStorage());
   const [ticketSelections, setTicketSelections] = useState({});
-  const [proceedNote, setProceedNote] = useState("Login is required to continue booking.");
-  const [safetyForm, setSafetyForm] = useState({
-    destination: "Cox's Bazar",
-    category: "all",
-    search: "",
-  });
-  const [safetyContacts, setSafetyContacts] = useState([]);
-  const [safetyLoading, setSafetyLoading] = useState(false);
-  const [safetySummary, setSafetySummary] = useState("Search a destination to load verified help lines.");
-  const [localDiscoveryForm, setLocalDiscoveryForm] = useState({
-    destination: "Cox's Bazar",
-    type: "all",
-    category: "",
-    search: "",
-    maxPrice: "",
-  });
-  const [localItems, setLocalItems] = useState([]);
-  const [localLoading, setLocalLoading] = useState(false);
-  const [localSummary, setLocalSummary] = useState("Search rentals and workshops before your trip begins.");
-  const [localPlan, setLocalPlan] = useState(() => readLocalPlanFromStorage());
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      sessionStorage.removeItem(transportCartKey);
-      setCart([]);
-    }
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    sessionStorage.setItem(transportCartKey, JSON.stringify(cart));
-  }, [cart]);
+  const [cartNotice, setCartNotice] = useState({ type: "", text: "" });
 
   useEffect(() => {
     sessionStorage.setItem(localDiscoveryPlanKey, JSON.stringify(localPlan));
@@ -194,22 +84,16 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    loadSafetyContacts({
-      destination: "Cox's Bazar",
-      category: "all",
-      search: "",
-    });
-  }, []);
+    if (!cartNotice.text) {
+      return;
+    }
 
-  useEffect(() => {
-    loadLocalDiscoveryItems({
-      destination: "Cox's Bazar",
-      type: "all",
-      category: "",
-      search: "",
-      maxPrice: "",
-    });
-  }, []);
+    const timer = setTimeout(() => {
+      setCartNotice({ type: "", text: "" });
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [cartNotice]);
 
   function updateSearchField(name, value) {
     setSearchForm((prev) => ({ ...prev, [name]: value }));
@@ -226,52 +110,33 @@ export default function HomePage() {
     }));
   }
 
-  function removeCartItem(targetId) {
-    setCart((prev) => prev.filter((item) => getTransportCartItemKey(item) !== targetId));
-  }
+  async function addTicketToCart(ticket) {
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
 
-  function addTicketToCart(ticket) {
     const ticketId = getTransportTicketId(ticket);
     if (!ticketId) {
       return;
     }
 
-    const selectedSeat = ticketSelections[ticketId]?.seat || "Any";
     const selectedSeatCount = Number(ticketSelections[ticketId]?.count) > 0
       ? Number(ticketSelections[ticketId]?.count)
       : 1;
 
-    const cartId = `${ticketId}:${selectedSeat}:${selectedSeatCount}`;
-    const duplicate = cart.some((item) => getTransportCartItemKey(item) === cartId);
-    if (duplicate) {
-      setSummaryText("That ticket and seat are already in your cart.");
-      return;
+    try {
+      await addTransportTicketToCart({ ticketId, quantity: selectedSeatCount });
+      setCartNotice({ type: "success", text: `${getTransportTitle(ticket)} added to cart successfully.` });
+    } catch (error) {
+      setCartNotice({
+        type: "error",
+        text:
+          error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          "Could not add ticket to cart.",
+      });
     }
-
-    const ticketDate = getTransportDate(ticket);
-    const departureTime = getTransportDepartureTime(ticket);
-    const arrivalTime = getTransportArrivalTime(ticket);
-
-    setCart((prev) => [
-      ...prev,
-      {
-        cartId,
-        id: ticketId,
-        title: getTransportTitle(ticket),
-        mode: ticket?.mode || "transport",
-        modeLabel: getTransportModeLabel(ticket),
-        operator: ticket?.operator || "Unknown operator",
-        travelDate: ticketDate,
-        departureTime,
-        arrivalTime,
-        price: ticket?.price || 0,
-        duration: ticket?.duration || 0,
-        seat: selectedSeat,
-        seatCount: selectedSeatCount,
-      },
-    ]);
-
-    setSummaryText(`${getTransportTitle(ticket)} was added to your central cart.`);
   }
 
   function resetTransportSearch() {
@@ -503,37 +368,8 @@ export default function HomePage() {
     loadTransportTickets();
   }
 
-  async function handleProceed() {
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
-    }
-
-    if (!cart.length && !localPlan.length) {
-      setProceedNote("Add at least one booked item before checkout.");
-      return;
-    }
-
-    setCheckoutLoading(true);
-    setProceedNote("Generating your itinerary and offline pass...");
-
-    try {
-      const result = await checkoutTrip({
-        transportItems: cart,
-        localItems: localPlan,
-      });
-
-      sessionStorage.removeItem(transportCartKey);
-      sessionStorage.removeItem(localDiscoveryPlanKey);
-      setCart([]);
-      setLocalPlan([]);
-      setProceedNote("Checkout completed.");
-      navigate(`/itinerary/${result.itinerary.id}`);
-    } catch (error) {
-      setProceedNote(error?.response?.data?.message || error?.response?.data?.error || "Unable to complete checkout right now.");
-    } finally {
-      setCheckoutLoading(false);
-    }
+  function handleProceed() {
+    navigate("/cart");
   }
 
   const ticketCards = useMemo(() => {
@@ -886,12 +722,17 @@ export default function HomePage() {
       </section>
 
       <section id="transport-ticket-search" className="section">
+        {cartNotice.text ? (
+          <div className={`cart-toast ${cartNotice.type === "error" ? "is-error" : "is-success"}`}>
+            {cartNotice.text}
+          </div>
+        ) : null}
+
         <div className="section-title">
           <p className="sub-title">Transport ticket search and booking</p>
           <h2>Search flights, trains, and buses from one place.</h2>
           <p className="description transport-intro">
-            Compare transport tickets by destination and date, filter by price and duration, pick a seat, and add the
-            ticket to your centralized cart.
+            Compare transport tickets by destination and date, filter by seat preference, and add your selected ticket directly to cart.
           </p>
         </div>
 
@@ -972,67 +813,22 @@ export default function HomePage() {
             </div>
           </form>
 
-          <div className="transport-grid transport-grid-split">
-            <div className="card transport-results-panel">
-              <div className="transport-panel-header">
-                <div>
-                  <h3>Available Tickets</h3>
-                  <p className="transport-muted">{summaryText}</p>
-                </div>
-                <span className="transport-badge">Live demo</span>
+          <div className="card transport-results-panel">
+            <div className="transport-panel-header">
+              <div>
+                <h3>Available Tickets</h3>
+                <p className="transport-muted">{summaryText}</p>
               </div>
-
-              <div className="transport-results">
-                {loading ? <p className="transport-empty">Loading transport tickets...</p> : ticketCards}
-              </div>
+              <span className="transport-badge">Live demo</span>
             </div>
 
-            <aside className="card transport-cart-panel">
-              <div className="transport-panel-header">
-                <div>
-                  <h3>Centralized Cart</h3>
-                  <p className="transport-muted">Selected tickets stay here while you plan the rest of the trip.</p>
-                </div>
-                <span className="transport-badge">{cart.length} item{cart.length === 1 ? "" : "s"}</span>
-              </div>
+            <div className="transport-results">
+              {loading ? <p className="transport-empty">Loading transport tickets...</p> : ticketCards}
+            </div>
 
-              <div className="transport-cart">
-                {!cart.length && <p className="transport-empty">Your cart is empty.</p>}
-
-                {cart.map((item) => (
-                  <div className="transport-cart-item" key={getTransportCartItemKey(item)}>
-                    <div>
-                      <strong>{item.title}</strong>
-                      <p>
-                        {item.modeLabel} | {item.travelDate || item.departureDate || ""} | Seat: {item.seat} | Seats booked: {item.seatCount || 1}
-                      </p>
-                      <p>{item.operator} | {item.departureTime} - {item.arrivalTime}</p>
-                    </div>
-                    <div className="transport-cart-meta">
-                      <strong>BDT {item.price}</strong>
-                      <button
-                        className="button-light transport-mini-btn"
-                        type="button"
-                        onClick={() => removeCartItem(getTransportCartItemKey(item))}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="transport-cart-footer">
-                <button className="button-main" type="button" disabled={checkoutLoading || (!cart.length && !localPlan.length)} onClick={handleProceed}>
-                  {checkoutLoading ? "Generating Itinerary..." : "Checkout and Build Itinerary"}
-                </button>
-                <p className="transport-muted">
-                  {(cart.length || localPlan.length)
-                    ? (isAuthenticated ? proceedNote : "Login is required to continue booking.")
-                    : proceedNote}
-                </p>
-              </div>
-            </aside>
+            <div className="transport-actions">
+              <button className="button-main" type="button" onClick={handleProceed}>Go to Cart</button>
+            </div>
           </div>
         </div>
       </section>
