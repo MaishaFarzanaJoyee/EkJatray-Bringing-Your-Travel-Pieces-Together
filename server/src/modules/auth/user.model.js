@@ -24,6 +24,16 @@ const userSchema = new mongoose.Schema(
       default: "user",
       index: true,
     },
+    isSuspended: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    suspensionReason: {
+      type: String,
+      default: "",
+      trim: true,
+    },
   },
   {
     timestamps: true,

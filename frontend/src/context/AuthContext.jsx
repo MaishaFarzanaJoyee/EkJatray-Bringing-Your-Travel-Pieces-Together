@@ -30,6 +30,7 @@ export function AuthProvider({ children }) {
     setUser(null);
     localStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem("ekjatrayTransportCart");
+    sessionStorage.removeItem("ekjatrayLocalDiscoveryPlan");
   };
 
   const setUserProfile = (nextUser) => {
