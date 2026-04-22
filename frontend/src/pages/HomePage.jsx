@@ -79,7 +79,7 @@ export default function HomePage() {
   const [summaryText, setSummaryText] = useState("Use the filters above to find tickets.");
   const [ticketSelections, setTicketSelections] = useState({});
   const [cartNotice, setCartNotice] = useState({ type: "", text: "" });
-
+// Load initial tickets on mount
   useEffect(() => {
     loadTransportTickets();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -223,7 +223,9 @@ export default function HomePage() {
     navigate("/cart");
   }
 
+    // Memoize the ticket cards to avoid unnecessary re-renders when selections change
   const ticketCards = useMemo(() => {
+   
     if (!tickets.length) {
       return <p className="transport-empty">No tickets match your filters.</p>;
     }

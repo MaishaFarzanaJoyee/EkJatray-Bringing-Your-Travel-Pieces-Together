@@ -60,7 +60,7 @@ const reviewSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ["manual", "seed"],
+      enum: ["manual"],
       default: "manual",
     },
   },
@@ -69,6 +69,7 @@ const reviewSchema = new mongoose.Schema(
   }
 );
 
+// Ensure a user can only leave one review per stay record
 reviewSchema.index({ userId: 1, stayRecordId: 1 }, { unique: true });
 
 export default mongoose.model("ServiceReview", reviewSchema);

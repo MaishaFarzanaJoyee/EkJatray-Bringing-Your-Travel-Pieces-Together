@@ -6,6 +6,8 @@ import budgetRoutes from "./modules/budget/budget.routes.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import transportRoutes from "./modules/transport/transport.routes.js";
 import recommendationRoutes from "./modules/recommendation/recommendation.routes.js";
+import cartCheckoutRoutes, { handleStripeWebhook } from "./modules/cartCheckout/cartCheckout.routes.js";
+import reviewRatingRoutes from "./modules/reviewRating/reviewRating.routes.js";
 import cors from "cors";
 
 // Create the Express app.
@@ -21,6 +23,9 @@ const frontendPath = path.resolve(__dirname, "../../frontend");
 const frontendDistPath = path.join(frontendPath, "dist");
 const frontendIndexPath = path.join(frontendDistPath, "index.html");
 const hasFrontendBuild = fs.existsSync(frontendIndexPath);
+
+// Stripe webhook must read raw body before JSON parser.
+app.post("/api/cart-checkout/webhook", express.raw({ type: "application/json" }), handleStripeWebhook);
 
 // This lets the app read JSON request bodies.
 app.use(express.json()); // allow JSON data req
@@ -38,6 +43,8 @@ app.use("/api/transport", transportRoutes);
 app.use("/api/auth", authRoutes);
 
 app.use("/api/recommendations", recommendationRoutes);
+app.use("/api/reviews", reviewRatingRoutes);
+app.use("/api/cart-checkout", cartCheckoutRoutes);
 
 if (hasFrontendBuild) {
   // Serve React production build files.

@@ -78,7 +78,7 @@ export default function ReviewPage() {
       setMyReviews([]);
     }
   }
-
+// Load public reviews on mount
   useEffect(() => {
     loadPublicReviews();
   }, []);
@@ -87,6 +87,7 @@ export default function ReviewPage() {
     loadPrivateData();
   }, [isAuthenticated]);
 
+// Handle search input changes
   function onChangeSearch(event) {
     const { name, value } = event.target;
     setSearch((prev) => ({ ...prev, [name]: value }));
@@ -176,11 +177,12 @@ export default function ReviewPage() {
     setErrorMessage("");
 
     try {
+      // Basic validation
       const payload = {
         ...form,
         rating: Number(form.rating),
       };
-
+      
       if (editingReviewId) {
         await updateReview(editingReviewId, {
           rating: payload.rating,
