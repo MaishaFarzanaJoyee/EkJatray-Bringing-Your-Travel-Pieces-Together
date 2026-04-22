@@ -33,6 +33,15 @@ function getTransportArrivalTime(ticket) {
   return ticket?.arrivalTime || ticket?.arrive || "";
 }
 
+function getTransportAvailableSeats(ticket) {
+  const seats = Number(ticket?.seatsAvailable ?? 0);
+  if (Number.isNaN(seats) || seats < 0) {
+    return 0;
+  }
+
+  return seats;
+}
+
 function getTransportSeatTypes(ticket) {
   if (Array.isArray(ticket?.seatTypes) && ticket.seatTypes.length) {
     return ticket.seatTypes;
@@ -121,9 +130,11 @@ export default function HomePage() {
       return;
     }
 
-    const selectedSeatCount = Number(ticketSelections[ticketId]?.count) > 0
-      ? Number(ticketSelections[ticketId]?.count)
-      : 1;
+    const availableSeats = getTransportAvailableSeats(ticket);
+    const selectedSeatCount = Math.min(
+      availableSeats || 1,
+      Number(ticketSelections[ticketId]?.count) > 0 ? Number(ticketSelections[ticketId]?.count) : 1
+    );
 
     try {
       await addTransportTicketToCart({ ticketId, quantity: selectedSeatCount });
@@ -381,7 +392,11 @@ export default function HomePage() {
       const ticketId = getTransportTicketId(ticket);
       const seatTypes = getTransportSeatTypes(ticket);
       const selectedSeat = ticketSelections[ticketId]?.seat || seatTypes[0] || "Any";
-      const selectedCount = ticketSelections[ticketId]?.count || 1;
+      const availableSeats = getTransportAvailableSeats(ticket);
+      const selectedCount = Math.min(
+        availableSeats || 1,
+        ticketSelections[ticketId]?.count || 1
+      );
       const ticketDate = getTransportDate(ticket);
       const departureTime = getTransportDepartureTime(ticket);
       const arrivalTime = getTransportArrivalTime(ticket);
@@ -424,19 +439,24 @@ export default function HomePage() {
               <label className="transport-seat-label">
                 Seats to book
                 <select
+                  disabled={!availableSeats}
                   value={selectedCount}
                   onChange={(event) => updateSelection(ticketId, "count", Number(event.target.value))}
                 >
-                  {Array.from({ length: 10 }, (_, index) => index + 1).map((count) => (
+                  {availableSeats
+                    ? Array.from({ length: availableSeats }, (_, index) => index + 1).map((count) => (
                     <option value={count} key={`${ticketId}-count-${count}`}>
                       {count}
                     </option>
-                  ))}
+                  ))
+                    : (
+                      <option value={0}>Sold out</option>
+                    )}
                 </select>
               </label>
             </div>
 
-            <button className="button-main" type="button" onClick={() => addTicketToCart(ticket)}>
+            <button className="button-main" type="button" onClick={() => addTicketToCart(ticket)} disabled={!availableSeats}>
               Add to Cart
             </button>
           </div>
