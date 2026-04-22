@@ -4,6 +4,7 @@ import { useAuth } from "./context/AuthContext";
 import AdminPage from "./pages/AdminPage";
 import BudgetPage from "./pages/BudgetPage";
 import HomePage from "./pages/HomePage";
+import ItineraryPage from "./pages/ItineraryPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ReviewPage from "./pages/ReviewPage";
@@ -75,6 +76,14 @@ function App() {
           element={
             <ProtectedRoute>
               <BudgetPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/itinerary/:itineraryId"
+          element={
+            <ProtectedRoute>
+              <ItineraryPage />
             </ProtectedRoute>
           }
         />

@@ -313,6 +313,12 @@ a {
 	grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.95fr);
 }
 
+.safety-layout {
+	display: grid;
+	grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.95fr);
+	gap: 16px;
+}
+
 .transport-results-panel,
 .transport-cart-panel {
 	min-height: 100%;
@@ -558,6 +564,20 @@ a {
 	border: 1px solid var(--line);
 }
 
+.safety-card {
+	padding: 18px;
+	border-radius: 18px;
+	background: linear-gradient(180deg, #f7f8fb 0%, #fffdf8 100%);
+	border: 1px solid var(--line);
+}
+
+.local-card {
+	padding: 18px;
+	border-radius: 18px;
+	background: linear-gradient(180deg, #f7f8fb 0%, #fbf4e8 100%);
+	border: 1px solid var(--line);
+}
+
 .transport-ticket-top {
 	display: flex;
 	justify-content: space-between;
@@ -658,6 +678,89 @@ a {
 	border-top: 1px solid var(--line);
 }
 
+.safety-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	justify-content: flex-end;
+}
+
+.safety-notes {
+	margin: 14px 0 0;
+	color: var(--muted);
+	line-height: 1.6;
+}
+
+.safety-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-top: 16px;
+}
+
+.local-feature-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 14px;
+}
+
+.trip-plan-schedule {
+	padding: 16px;
+	border-radius: 18px;
+	background: #f7f8fb;
+	border: 1px solid var(--line);
+}
+
+.trip-plan-schedule strong {
+	display: block;
+	margin-bottom: 10px;
+}
+
+.trip-plan-schedule-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.trip-plan-schedule-grid input {
+	margin-top: 6px;
+}
+
+.safety-actions .button-main,
+.safety-actions .button-light {
+	margin: 0;
+}
+
+.safety-side-panel {
+	display: grid;
+	align-content: start;
+	gap: 16px;
+}
+
+.safety-tip-list {
+	display: grid;
+	gap: 12px;
+}
+
+.safety-tip {
+	padding: 16px;
+	border-radius: 18px;
+	background: #f7f8fb;
+	border: 1px solid var(--line);
+}
+
+.safety-tip strong,
+.safety-tip p {
+	margin: 0;
+}
+
+.safety-tip p {
+	margin-top: 8px;
+	color: var(--muted);
+	line-height: 1.55;
+}
+
 /* Individual card */
 .card {
 	border-radius: 24px;
@@ -696,13 +799,15 @@ a {
 /* Form controls shared across pages */
 input,
 select,
+textarea,
 button {
 	font: inherit;
 }
 
 /* Text input look */
 input,
-select {
+select,
+textarea {
 	display: block;
 	width: min(100%, 420px);
 	margin: 10px 0;
@@ -714,9 +819,15 @@ select {
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
 	outline: 2px solid rgba(217, 119, 6, 0.35);
 	outline-offset: 2px;
+}
+
+textarea {
+	resize: vertical;
+	min-height: 120px;
 }
 
 /* Native button defaults */
@@ -964,6 +1075,100 @@ pre {
 	margin: 0 0 6px;
 }
 
+.admin-check-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 10px 0 0;
+	font-weight: 600;
+}
+
+.admin-check-row input {
+	width: auto;
+	margin: 0;
+}
+
+.itinerary-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.85fr);
+	gap: 16px;
+}
+
+.itinerary-timeline {
+	display: grid;
+	gap: 16px;
+}
+
+.itinerary-entry {
+	display: grid;
+	grid-template-columns: 22px minmax(0, 1fr);
+	gap: 14px;
+	align-items: start;
+}
+
+.itinerary-dot {
+	width: 14px;
+	height: 14px;
+	border-radius: 999px;
+	background: linear-gradient(135deg, var(--brand) 0%, #f59e0b 100%);
+	box-shadow: 0 0 0 6px rgba(217, 119, 6, 0.12);
+	margin-top: 8px;
+}
+
+.itinerary-entry-body {
+	padding: 16px 18px;
+	border-radius: 18px;
+	background: #f7f8fb;
+	border: 1px solid var(--line);
+}
+
+.itinerary-entry-body h4 {
+	margin: 6px 0;
+	font-size: 1.08rem;
+}
+
+.itinerary-time {
+	margin: 10px 0 6px;
+	font-weight: 700;
+	color: var(--text);
+}
+
+.itinerary-unscheduled {
+	margin-top: 22px;
+	padding-top: 18px;
+	border-top: 1px solid var(--line);
+}
+
+.itinerary-unscheduled h3 {
+	margin: 0 0 12px;
+}
+
+.itinerary-pass-card {
+	display: grid;
+	align-content: start;
+	gap: 18px;
+}
+
+.itinerary-qr {
+	width: min(100%, 280px);
+	aspect-ratio: 1;
+	padding: 14px;
+	border-radius: 24px;
+	background: #fffaf4;
+	border: 1px solid var(--line);
+	box-shadow: var(--shadow);
+}
+
+.itinerary-pass-meta {
+	display: grid;
+	gap: 8px;
+	color: var(--muted);
+}
+
+.itinerary-pass-meta p {
+	margin: 0;
+}
+
 /* Tablet styles */
 @media (max-width: 960px) {
 	.card-grid,
@@ -971,6 +1176,8 @@ pre {
 	.result-grid,
 	.transport-grid-4,
 	.transport-grid-split,
+	.safety-layout,
+	.itinerary-grid,
 	.transport-ticket-meta,
 	.admin-panel-grid {
 		grid-template-columns: 1fr;
@@ -992,7 +1199,8 @@ pre {
 	.transport-ticket-top,
 	.transport-ticket-actions,
 	.transport-cart-item,
-	.transport-panel-header {
+	.transport-panel-header,
+	.safety-actions {
 		flex-direction: column;
 		align-items: flex-start;
 	}
@@ -1000,6 +1208,10 @@ pre {
 	.transport-ticket-selects {
 		grid-template-columns: 1fr;
 		width: 100%;
+	}
+
+	.trip-plan-schedule-grid {
+		grid-template-columns: 1fr;
 	}
 
 	.transport-cart-meta {
@@ -1043,7 +1255,9 @@ pre {
 	}
 
 	.transport-actions .button-main,
-	.transport-actions .button-light {
+	.transport-actions .button-light,
+	.safety-actions .button-main,
+	.safety-actions .button-light {
 		width: 100%;
 	}
 }
