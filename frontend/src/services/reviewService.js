@@ -17,8 +17,8 @@ export async function getPublicProviderProfile(targetType, targetId) {
   return response.data;
 }
 
-export async function getMyEligibleStays() {
-  const response = await api.get("/api/reviews/eligible/my-stays");
+export async function getMyBookingsForReview() {
+  const response = await api.get("/api/reviews/bookings/my");
   return response.data;
 }
 
