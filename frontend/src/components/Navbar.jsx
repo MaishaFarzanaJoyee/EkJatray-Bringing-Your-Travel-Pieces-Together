@@ -29,6 +29,10 @@ export default function Navbar() {
           Home
         </NavLink>
 
+        <NavLink to="/reviews" className={linkClass}>
+          Reviews
+        </NavLink>
+
         {!isAuthenticated && (
           <>
             <NavLink to="/login" className={linkClass}>
@@ -43,6 +47,12 @@ export default function Navbar() {
         {isAuthenticated && (
           <NavLink to="/budget" className={linkClass}>
             Manage Budget
+          </NavLink>
+        )}
+
+        {isAuthenticated && (
+          <NavLink to="/cart" className={linkClass}>
+            Cart
           </NavLink>
         )}
 

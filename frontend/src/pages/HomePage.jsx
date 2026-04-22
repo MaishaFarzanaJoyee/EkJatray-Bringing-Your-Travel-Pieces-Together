@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { searchTransportTickets } from "../services/transportService";
+import { addTransportTicketToCart } from "../services/cartCheckoutService";
 import { bangladeshDistricts } from "../utils/bangladeshDistricts";
-
-const transportCartKey = "ekjatrayTransportCart";
 
 function getTransportTicketId(ticket) {
   return ticket?._id || ticket?.id || "";
@@ -55,22 +54,6 @@ function formatDuration(durationMinutes) {
   return `${hours}h ${minutes}m`;
 }
 
-function getTransportCartItemKey(item) {
-  if (item?.cartId) {
-    return item.cartId;
-  }
-
-  return `${item?.id || ""}:${item?.seat || ""}:${item?.seatCount || 1}`;
-}
-
-function readCartFromStorage() {
-  try {
-    return JSON.parse(sessionStorage.getItem(transportCartKey) || "[]");
-  } catch {
-    return [];
-  }
-}
-
 export default function HomePage() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -85,25 +68,25 @@ export default function HomePage() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [summaryText, setSummaryText] = useState("Use the filters above to find tickets.");
-  const [cart, setCart] = useState(() => readCartFromStorage());
   const [ticketSelections, setTicketSelections] = useState({});
-  const [proceedNote, setProceedNote] = useState("Login is required to continue booking.");
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      sessionStorage.removeItem(transportCartKey);
-      setCart([]);
-    }
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    sessionStorage.setItem(transportCartKey, JSON.stringify(cart));
-  }, [cart]);
+  const [cartNotice, setCartNotice] = useState({ type: "", text: "" });
 
   useEffect(() => {
     loadTransportTickets();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!cartNotice.text) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setCartNotice({ type: "", text: "" });
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [cartNotice]);
 
   function updateSearchField(name, value) {
     setSearchForm((prev) => ({ ...prev, [name]: value }));
@@ -120,52 +103,33 @@ export default function HomePage() {
     }));
   }
 
-  function removeCartItem(targetId) {
-    setCart((prev) => prev.filter((item) => getTransportCartItemKey(item) !== targetId));
-  }
+  async function addTicketToCart(ticket) {
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
 
-  function addTicketToCart(ticket) {
     const ticketId = getTransportTicketId(ticket);
     if (!ticketId) {
       return;
     }
 
-    const selectedSeat = ticketSelections[ticketId]?.seat || "Any";
     const selectedSeatCount = Number(ticketSelections[ticketId]?.count) > 0
       ? Number(ticketSelections[ticketId]?.count)
       : 1;
 
-    const cartId = `${ticketId}:${selectedSeat}:${selectedSeatCount}`;
-    const duplicate = cart.some((item) => getTransportCartItemKey(item) === cartId);
-    if (duplicate) {
-      setSummaryText("That ticket and seat are already in your cart.");
-      return;
+    try {
+      await addTransportTicketToCart({ ticketId, quantity: selectedSeatCount });
+      setCartNotice({ type: "success", text: `${getTransportTitle(ticket)} added to cart successfully.` });
+    } catch (error) {
+      setCartNotice({
+        type: "error",
+        text:
+          error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          "Could not add ticket to cart.",
+      });
     }
-
-    const ticketDate = getTransportDate(ticket);
-    const departureTime = getTransportDepartureTime(ticket);
-    const arrivalTime = getTransportArrivalTime(ticket);
-
-    setCart((prev) => [
-      ...prev,
-      {
-        cartId,
-        id: ticketId,
-        title: getTransportTitle(ticket),
-        mode: ticket?.mode || "transport",
-        modeLabel: getTransportModeLabel(ticket),
-        operator: ticket?.operator || "Unknown operator",
-        travelDate: ticketDate,
-        departureTime,
-        arrivalTime,
-        price: ticket?.price || 0,
-        duration: ticket?.duration || 0,
-        seat: selectedSeat,
-        seatCount: selectedSeatCount,
-      },
-    ]);
-
-    setSummaryText(`${getTransportTitle(ticket)} was added to your central cart.`);
   }
 
   function resetTransportSearch() {
@@ -245,17 +209,7 @@ export default function HomePage() {
   }
 
   function handleProceed() {
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
-    }
-
-    if (!cart.length) {
-      setProceedNote("Add at least one ticket before proceeding.");
-      return;
-    }
-
-    setProceedNote("Booking flow will continue here after login.");
+    navigate("/cart");
   }
 
   const ticketCards = useMemo(() => {
@@ -365,12 +319,17 @@ export default function HomePage() {
       </section>
 
       <section id="transport-ticket-search" className="section">
+        {cartNotice.text ? (
+          <div className={`cart-toast ${cartNotice.type === "error" ? "is-error" : "is-success"}`}>
+            {cartNotice.text}
+          </div>
+        ) : null}
+
         <div className="section-title">
           <p className="sub-title">Transport ticket search and booking</p>
           <h2>Search flights, trains, and buses from one place.</h2>
           <p className="description transport-intro">
-            Compare transport tickets by destination and date, filter by price and duration, pick a seat, and add the
-            ticket to your centralized cart.
+            Compare transport tickets by destination and date, filter by seat preference, and add your selected ticket directly to cart.
           </p>
         </div>
 
@@ -451,67 +410,22 @@ export default function HomePage() {
             </div>
           </form>
 
-          <div className="transport-grid transport-grid-split">
-            <div className="card transport-results-panel">
-              <div className="transport-panel-header">
-                <div>
-                  <h3>Available Tickets</h3>
-                  <p className="transport-muted">{summaryText}</p>
-                </div>
-                <span className="transport-badge">Live demo</span>
+          <div className="card transport-results-panel">
+            <div className="transport-panel-header">
+              <div>
+                <h3>Available Tickets</h3>
+                <p className="transport-muted">{summaryText}</p>
               </div>
-
-              <div className="transport-results">
-                {loading ? <p className="transport-empty">Loading transport tickets...</p> : ticketCards}
-              </div>
+              <span className="transport-badge">Live demo</span>
             </div>
 
-            <aside className="card transport-cart-panel">
-              <div className="transport-panel-header">
-                <div>
-                  <h3>Centralized Cart</h3>
-                  <p className="transport-muted">Selected tickets stay here while you plan the rest of the trip.</p>
-                </div>
-                <span className="transport-badge">{cart.length} item{cart.length === 1 ? "" : "s"}</span>
-              </div>
+            <div className="transport-results">
+              {loading ? <p className="transport-empty">Loading transport tickets...</p> : ticketCards}
+            </div>
 
-              <div className="transport-cart">
-                {!cart.length && <p className="transport-empty">Your cart is empty.</p>}
-
-                {cart.map((item) => (
-                  <div className="transport-cart-item" key={getTransportCartItemKey(item)}>
-                    <div>
-                      <strong>{item.title}</strong>
-                      <p>
-                        {item.modeLabel} | {item.travelDate || item.departureDate || ""} | Seat: {item.seat} | Seats booked: {item.seatCount || 1}
-                      </p>
-                      <p>{item.operator} | {item.departureTime} - {item.arrivalTime}</p>
-                    </div>
-                    <div className="transport-cart-meta">
-                      <strong>BDT {item.price}</strong>
-                      <button
-                        className="button-light transport-mini-btn"
-                        type="button"
-                        onClick={() => removeCartItem(getTransportCartItemKey(item))}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="transport-cart-footer">
-                <button className="button-main" type="button" disabled={!cart.length} onClick={handleProceed}>
-                  Proceed
-                </button>
-                <p className="transport-muted">
-                  {cart.length
-                    ? (isAuthenticated ? "Ready to continue booking." : "Login is required to continue booking.")
-                    : proceedNote}
-                </p>
-              </div>
-            </aside>
+            <div className="transport-actions">
+              <button className="button-main" type="button" onClick={handleProceed}>Go to Cart</button>
+            </div>
           </div>
         </div>
       </section>
