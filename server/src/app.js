@@ -18,7 +18,9 @@ import notificationRoutes from "./modules/notification/notification.routes.js";
 
 // Create the Express app.
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: "*"
+}));
 
 // Get the current file path so we can find the frontend folder.
 const __filename = fileURLToPath(import.meta.url);
