@@ -32,10 +32,18 @@ export default function RecommendationPage() {
 
     try {
       const data = await getRecommendations(budget, tags);
-      if (!data || data.length === 0) {
+      const nextDestinations = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.destinations)
+          ? data.destinations
+          : Array.isArray(data?.recommendations)
+            ? data.recommendations
+            : [];
+
+      if (nextDestinations.length === 0) {
         setEmptyResult(true);
       } else {
-        setDestinations(data);
+        setDestinations(nextDestinations);
       }
     } catch (err) {
       setError("Unable to fetch recommended destinations. Please make sure the backend is running.");
@@ -98,7 +106,7 @@ export default function RecommendationPage() {
                 </div>
                 <p className="text-muted">{dest.description || "A curated travel suggestion."}</p>
                 <div className="tag-row">
-                  {(dest.tags || []).map((tag, index) => (
+                  {(Array.isArray(dest.tags) ? dest.tags : []).map((tag, index) => (
                     <span key={index} className="tag">
                       {tag}
                     </span>

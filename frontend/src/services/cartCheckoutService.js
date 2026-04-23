@@ -10,6 +10,16 @@ export async function addTransportTicketToCart(payload) {
   return response.data;
 }
 
+export async function addAccommodationToCart(payload) {
+  const response = await api.post("/api/cart-checkout/cart/items/accommodation", payload);
+  return response.data;
+}
+
+export async function addWellnessToCart(payload) {
+  const response = await api.post("/api/cart-checkout/cart/items/wellness", payload);
+  return response.data;
+}
+
 export async function updateCartItem(itemId, payload) {
   const response = await api.patch(`/api/cart-checkout/cart/items/${itemId}`, payload);
   return response.data;

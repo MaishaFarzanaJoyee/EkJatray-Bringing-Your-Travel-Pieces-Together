@@ -15,6 +15,7 @@ import RecommendationPage from "./pages/RecommendationPage";
 import WeatherPlannerPage from "./pages/WeatherPlannerPage";
 import WellnessBookingPage from "./pages/WellnessBookingPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import TransportPage from "./pages/TransportPage";
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -100,6 +101,7 @@ function App() {
           }
         />
         <Route path="/recommendations" element={<RecommendationPage />} />
+        <Route path="/transport" element={<TransportPage />} />
         <Route path="/weather" element={<WeatherPlannerPage />} />
         <Route
           path="/wellness"

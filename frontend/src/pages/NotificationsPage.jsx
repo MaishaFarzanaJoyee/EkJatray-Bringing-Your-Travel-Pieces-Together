@@ -4,11 +4,26 @@ import { getNotifications, markNotificationAsRead } from "../services/joyeeServi
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const loadNotifications = async () => {
+    setLoading(true);
+    setError("");
+
     try {
       const data = await getNotifications();
-      setNotifications(data || []);
+      const nextNotifications = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.notifications)
+          ? data.notifications
+          : Array.isArray(data?.items)
+            ? data.items
+            : [];
+
+      setNotifications(nextNotifications);
+    } catch (err) {
+      setNotifications([]);
+      setError(err?.response?.data?.message || "Unable to load notifications right now.");
     } finally {
       setLoading(false);
     }
@@ -19,8 +34,13 @@ export default function NotificationsPage() {
   }, []);
 
   const handleRead = async (id) => {
-    await markNotificationAsRead(id);
-    loadNotifications();
+    try {
+      setError("");
+      await markNotificationAsRead(id);
+      await loadNotifications();
+    } catch (err) {
+      setError(err?.response?.data?.message || "Unable to update notification status.");
+    }
   };
 
   return (
@@ -34,6 +54,8 @@ export default function NotificationsPage() {
         <div className="card card-form">
           {loading ? (
             <p className="status-message">Loading notifications...</p>
+          ) : error ? (
+            <p className="status-error">{error}</p>
           ) : notifications.length === 0 ? (
             <p className="status-message">No notifications available.</p>
           ) : (
