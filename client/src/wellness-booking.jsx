@@ -69,6 +69,20 @@ const WellnessBooking = () => {
         }
     };
 
+    const handleDelete = async (itemId) => {
+        try {
+            // Send the delete request to your server
+            await fetch(`${API_BASE}/plan/lodging/${itemId}`, {
+                method: 'DELETE'
+            });
+            
+            // After it deletes from the database, refresh the UI so it disappears!
+            loadUnifiedPlan(); 
+        } catch (error) {
+            console.error("Failed to delete", error);
+        }
+    };
+
     const loadUnifiedPlan = async () => {
         try {
             const res = await fetch(`${API_BASE}/plan/unified-itinerary`, { cache: 'no-store' });
@@ -177,8 +191,15 @@ const WellnessBooking = () => {
                             <ul className="space-y-2 text-gray-300">
                                 {tripPlan.accommodations && tripPlan.accommodations.length > 0 ? (
                                     tripPlan.accommodations.map((a, index) => (
-                                        <li key={index} className="flex items-center gap-2">
-                                            <span>🏨</span> {a.name} - {a.location}
+                                        <li key={index} className="flex justify-between items-center py-2 border-b border-gray-700">
+                                            <span>🏨 {a.name} - {a.location}</span>
+                                            <button 
+                                                onClick={() => handleDelete(a._id)}
+                                                className="text-red-400 hover:text-red-600 font-bold px-2 text-lg"
+                                                title="Cancel Booking"
+                                            >
+                                                ❌
+                                            </button>
                                         </li>
                                     ))
                                 ) : (
@@ -193,8 +214,8 @@ const WellnessBooking = () => {
                             <ul className="space-y-2 text-gray-300">
                                 {tripPlan.wellnessConsultations && tripPlan.wellnessConsultations.length > 0 ? (
                                     tripPlan.wellnessConsultations.map((w, index) => (
-                                        <li key={index} className="flex items-center gap-2">
-                                            <span>🌿</span> {w.specialty} with {w.practitionerName}
+                                        <li key={index} className="flex justify-between items-center py-2 border-b border-gray-700">
+                                            <span>🌿 {w.specialty} with {w.practitionerName}</span>
                                         </li>
                                     ))
                                 ) : (

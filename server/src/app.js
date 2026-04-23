@@ -4,10 +4,12 @@ import { fileURLToPath } from "url";
 import budgetRoutes from "./modules/budget/budget.routes.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import transportRoutes from "./modules/transport/transport.routes.js";
-import recommendationRoutes from './modules/recommendation/recommendation.routes.js';
 
+
+import recommendationRoutes from './modules/recommendation/recommendation.routes.js';
 import cors from 'cors';
 import bookingRoutes from './modules/booking/booking.routes.js';
+import notificationRoutes from './modules/notification/notification.routes.js';
 
 // Create the Express app.
 const app = express();
@@ -66,5 +68,8 @@ app.use("/api/auth", authRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 
 app.use('/api', bookingRoutes);
+
+// Connect notification API routes.
+app.use("/api/notifications", notificationRoutes);
 
 export default app;

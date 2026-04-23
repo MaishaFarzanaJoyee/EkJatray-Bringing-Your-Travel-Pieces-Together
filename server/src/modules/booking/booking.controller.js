@@ -1,6 +1,7 @@
 import Accommodation from './accommodation.model.js';
 import Wellness from './wellness.model.js';
 import TripPlan from './tripPlan.model.js';
+import Notification from '../notification/notification.model.js';
 
 // 1. Get Accommodations
 export const getAccommodations = async (req, res) => {
@@ -24,12 +25,29 @@ export const bookLodging = async (req, res) => {
         
         plan.accommodations.push(hotelId);
         await plan.save();
+        await Notification.create({
+            userId: userId || '12345', 
+            title: "Accommodation Booked! 🏨",
+            message: "Your hotel has been successfully added to your EkJatray itinerary."
+        });
         res.status(200).json({ message: "Lodging successfully added to Trip Plan!", plan });
     } catch (error) {
         res.status(500).json({ error: "Failed to book lodging" });
     }
 };
-
+// DELETE: Remove a booked lodging
+export const deleteLodging = async (req, res) => {
+    try {
+        const { id } = req.params;
+        // Assuming 'Plan' or 'Booking' is your Mongoose model for these items
+        // Adjust the logic here depending on if it's an array inside a user, or its own document
+        await Plan.findByIdAndDelete(id); 
+        
+        res.status(200).json({ message: "Booking canceled successfully" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
 // 3. Get Wellness Centers
 export const getWellnessCenters = async (req, res) => {
     try {

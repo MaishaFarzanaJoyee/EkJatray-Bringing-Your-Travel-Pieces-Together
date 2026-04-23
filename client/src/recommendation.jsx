@@ -43,7 +43,7 @@ const Recommendation = () => {
         setDestinations([]);
 
         try {
-            const response = await fetch(`http://localhost:5000/api/recommendations?budget=${budget}&tags=${tags}`);
+            const response = await fetch(`http://localhost:1065/api/recommendations?budget=${budget}&tags=${tags}`);
             const data = await response.json();
 
             if (!data || data.length === 0) {

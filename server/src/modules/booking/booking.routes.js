@@ -1,10 +1,11 @@
 import express from 'express';
 import { 
-    getAccommodations, 
-    bookLodging, 
-    getWellnessCenters, 
-    bookWellness, 
-    getUnifiedItinerary 
+    getAccommodations,
+    bookLodging,
+    getWellnessCenters,
+    bookWellness,
+    getUnifiedItinerary,
+    deleteLodging 
 } from './booking.controller.js';
 
 const router = express.Router();
@@ -19,5 +20,6 @@ router.get('/wellness', getWellnessCenters);
 router.post('/plan/book-lodging', bookLodging);
 router.post('/plan/book-wellness', bookWellness);
 router.get('/plan/unified-itinerary', getUnifiedItinerary);
+router.delete('/plan/lodging/:id', deleteLodging);
 
 export default router;
