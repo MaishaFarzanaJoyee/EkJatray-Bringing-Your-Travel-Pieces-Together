@@ -15,7 +15,7 @@ const [{ default: app }, { default: connectDB }] = await Promise.all([
 await connectDB();
 
 // Server port number.
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 // Start the Express server.
 app.listen(PORT, () => {
