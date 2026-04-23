@@ -62,7 +62,7 @@ const stayRecordSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ["admin", "system", "seed"],
+      enum: ["admin", "system"],
       default: "admin",
     },
   },

@@ -37,6 +37,10 @@ export default function Navbar() {
           Recommendations
         </NavLink>
 
+        <NavLink to="/transport" className={linkClass}>
+          Transport
+        </NavLink>
+
         <NavLink to="/weather" className={linkClass}>
           Weather Planner
         </NavLink>

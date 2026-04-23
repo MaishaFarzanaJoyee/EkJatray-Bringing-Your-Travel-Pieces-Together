@@ -42,8 +42,7 @@ export default function CheckoutSuccessPage() {
         ) : null}
 
         <div className="button-row">
-          <Link className="button-main" to="/cart">Back to Cart</Link>
-          <Link className="button-light" to="/reviews">Go to Reviews</Link>
+          <Link className="button-main" to="/">Go to Home</Link>
         </div>
       </section>
     </main>

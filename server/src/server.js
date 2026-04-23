@@ -4,7 +4,6 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const [{ default: app }, { default: connectDB }] = await Promise.all([
@@ -16,7 +15,7 @@ const [{ default: app }, { default: connectDB }] = await Promise.all([
 await connectDB();
 
 // Server port number.
-const PORT = Number(process.env.PORT || 5000);
+const PORT = 5000;
 
 // Start the Express server.
 app.listen(PORT, () => {

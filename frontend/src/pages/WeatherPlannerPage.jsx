@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchWeatherData } from "../services/joyeeService";
+import { bangladeshDistricts } from "../utils/bangladeshDistricts";
 
 function buildMapUrl(lat, lon) {
   return `https://www.openstreetmap.org/export/embed.html?bbox=${lon - 0.06}%2C${lat - 0.04}%2C${lon + 0.06}%2C${lat + 0.04}&layer=mapnik&marker=${lat}%2C${lon}`;
@@ -44,7 +45,7 @@ export default function WeatherPlannerPage() {
   const handleSearch = async () => {
     setError("");
     if (!location.trim()) {
-      setError("Please enter a destination city.");
+      setError("Please select a destination district.");
       return;
     }
 
@@ -68,13 +69,18 @@ export default function WeatherPlannerPage() {
 
         <div className="card card-form">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <input
-              type="text"
-              placeholder="Enter destination city"
+            <select
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               className="input-field"
-            />
+            >
+              <option value="">Select destination district</option>
+              {bangladeshDistricts.map((district) => (
+                <option key={district} value={district}>
+                  {district}
+                </option>
+              ))}
+            </select>
             <button onClick={handleSearch} className="button-primary">
               Get Forecast
             </button>

@@ -25,7 +25,7 @@ const cartItemSchema = new mongoose.Schema(
     sourceModule: {
       type: String,
       default: "manual",
-      enum: ["manual", "transport", "recommendation"],
+      enum: ["manual", "transport", "recommendation", "booking"],
     },
     sourceId: {
       type: String,

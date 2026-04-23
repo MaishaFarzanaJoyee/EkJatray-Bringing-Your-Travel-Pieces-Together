@@ -19,6 +19,10 @@ export const getAccommodations = async (req, res) => {
 export const bookLodging = async (req, res) => {
     try {
         const { hotelId } = req.body;
+        if (!hotelId) {
+            return res.status(400).json({ error: "hotelId is required" });
+        }
+
         // Find or create a trip plan for the demo user
         let plan = await TripPlan.findOne({ userIdentifier: "demo-user" });
         if (!plan) plan = new TripPlan({ userIdentifier: "demo-user" });
@@ -26,7 +30,7 @@ export const bookLodging = async (req, res) => {
         plan.accommodations.push(hotelId);
         await plan.save();
         await Notification.create({
-            userId: userId || '12345', 
+            userId: '12345', 
             title: "Accommodation Booked! 🏨",
             message: "Your hotel has been successfully added to your EkJatray itinerary."
         });
@@ -39,9 +43,16 @@ export const bookLodging = async (req, res) => {
 export const deleteLodging = async (req, res) => {
     try {
         const { id } = req.params;
-        // Assuming 'Plan' or 'Booking' is your Mongoose model for these items
-        // Adjust the logic here depending on if it's an array inside a user, or its own document
-        await Plan.findByIdAndDelete(id); 
+        let plan = await TripPlan.findOne({ userIdentifier: "demo-user" });
+
+        if (!plan) {
+            return res.status(404).json({ message: "Trip plan not found" });
+        }
+
+        plan.accommodations = plan.accommodations.filter(
+            (accommodationId) => accommodationId.toString() !== id
+        );
+        await plan.save();
         
         res.status(200).json({ message: "Booking canceled successfully" });
     } catch (error) {
@@ -66,6 +77,10 @@ export const getWellnessCenters = async (req, res) => {
 export const bookWellness = async (req, res) => {
     try {
         const { wellnessId } = req.body;
+        if (!wellnessId) {
+            return res.status(400).json({ error: "wellnessId is required" });
+        }
+
         let plan = await TripPlan.findOne({ userIdentifier: "demo-user" });
         if (!plan) plan = new TripPlan({ userIdentifier: "demo-user" });
         

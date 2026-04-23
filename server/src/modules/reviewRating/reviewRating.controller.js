@@ -1,10 +1,10 @@
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import User from "../auth/user.model.js";
+import TransportTicket from "../transport/transport.model.js";
 import ServiceReview from "./review.model.js";
 import StayRecord from "./stayRecord.model.js";
 import ProviderRating from "./providerRating.model.js";
-import { runDistrictReviewSeed } from "./reviewSeed.service.js";
 
 const REVIEW_ALLOWED_STATUS = ["booked", "staying", "completed"];
 
@@ -124,18 +124,18 @@ export async function getHotelsByDistrict(req, res) {
           targetId: { $first: "$targetId" },
           targetName: { $first: "$targetName" },
           districtName: { $first: "$districtName" },
-          totalReviews: { $sum: 1 },
+          totalReviews: { $sum: 1 }, // count of reviews
           averageRating: { $avg: "$rating" },
         },
       },
       {
         $project: {
-          _id: 0,
+          _id: 0, // hide the default _id
           targetId: 1,
-          targetName: 1,
-          districtName: 1,
+          targetName: 1, 
+          districtName: 1, //1 =yes to include in results
           totalReviews: 1,
-          averageRating: { $round: ["$averageRating", 2] },
+          averageRating: { $round: ["$averageRating", 2] }, // round to 2 decimals
         },
       },
       { $sort: { averageRating: -1, totalReviews: -1, targetName: 1 } },
@@ -177,8 +177,8 @@ export async function getMyEligibleStays(req, res) {
 
     const stays = await StayRecord.find({
       userId,
-      status: { $in: REVIEW_ALLOWED_STATUS },
-    }).sort({ updatedAt: -1 });
+      status: { $in: REVIEW_ALLOWED_STATUS }, 
+    }).sort({ updatedAt: -1 }); // most recent first
 
     return res.json({ stays });
   } catch (error) {
@@ -192,23 +192,24 @@ export async function getMyBookingsForReview(req, res) {
 
     const bookings = await StayRecord.find({
       userId,
-      targetType: { $in: ["hotel", "transport"] },
+      targetType: { $in: ["hotel", "transport", "localArtisan"] },
       status: { $in: REVIEW_ALLOWED_STATUS },
-    }).sort({ updatedAt: -1 });
+    }).sort({ updatedAt: -1 }); // most recent first
 
     const stayIds = bookings.map((row) => row._id.toString());
     const reviews = await ServiceReview.find({
       userId,
-      stayRecordId: { $in: stayIds },
+      stayRecordId: { $in: stayIds }, // get all reviews for this user's stays
     });
 
     const reviewMap = new Map(reviews.map((row) => [row.stayRecordId, row]));
 
-    const enriched = bookings.map((booking) => {
+    const enriched = bookings.map((booking) => { // for each booking, find if there's a review
       const stayId = booking._id.toString();
       const review = reviewMap.get(stayId) || null;
 
-      return {
+      return { 
+        //copy paste booking fields and add review info
         ...booking.toObject(),
         stayRecordId: stayId,
         canReview: booking.status !== "cancelled",
@@ -274,6 +275,12 @@ export async function createReview(req, res) {
       });
     }
 
+    let districtName = toSafeText(stay.districtName).toLowerCase();
+    if (!districtName && toSafeText(targetType) === "transport" && mongoose.Types.ObjectId.isValid(toSafeText(targetId))) {
+      const ticket = await TransportTicket.findById(targetId).select("destination");
+      districtName = toSafeText(ticket?.destination).toLowerCase();
+    }
+
     const created = await ServiceReview.create({
       userId,
       userName,
@@ -281,7 +288,7 @@ export async function createReview(req, res) {
       targetType: toSafeText(targetType),
       targetId: toSafeText(targetId),
       targetName: toSafeText(targetName),
-      districtName: toSafeText(stay.districtName).toLowerCase(),
+      districtName,
       rating: safeRating,
       reviewText: toSafeText(reviewText),
       isVisible: true,
@@ -431,133 +438,3 @@ export async function createStayRecordByAdmin(req, res) {
   }
 }
 
-export async function seedSampleHotelReviews(req, res) {
-  try {
-    const sampleUsers = [
-      { name: "Amina Rahman", email: "sample.amina@ekjatray.local" },
-      { name: "Mahin Karim", email: "sample.mahin@ekjatray.local" },
-      { name: "Tanjila Noor", email: "sample.tanjila@ekjatray.local" },
-    ];
-
-    const hotels = [
-      {
-        id: "hotel-sea-view-cox",
-        name: "Sea View Hotel Cox's Bazar",
-        districtName: "cox's bazar",
-        rating: 5,
-        text: "Clean rooms, fast check-in, and the beach was very close. Staff were polite and solved small issues quickly.",
-      },
-      {
-        id: "hotel-city-inn-dhaka",
-        name: "City Inn Dhaka",
-        districtName: "dhaka",
-        rating: 4,
-        text: "Good location for work trips. Wi-Fi was stable and breakfast options were simple but fresh.",
-      },
-      {
-        id: "hotel-hill-nest-bandarban",
-        name: "Hill Nest Bandarban",
-        districtName: "bandarban",
-        rating: 5,
-        text: "Quiet environment with a great hill view. Service felt personal and the room was tidy.",
-      },
-    ];
-
-    const passwordHash = await bcrypt.hash("SamplePass123", 10);
-
-    const createdUsers = [];
-    for (const sample of sampleUsers) {
-      let user = await User.findOne({ email: sample.email.toLowerCase() });
-      if (!user) {
-        user = await User.create({
-          name: sample.name,
-          email: sample.email.toLowerCase(),
-          passwordHash,
-          role: "user",
-        });
-      }
-      createdUsers.push(user);
-    }
-
-    const created = [];
-
-    for (let i = 0; i < hotels.length; i += 1) {
-      const hotel = hotels[i];
-      const user = createdUsers[i % createdUsers.length];
-
-      let stay = await StayRecord.findOne({
-        userId: user._id.toString(),
-        targetType: "hotel",
-        targetId: hotel.id,
-        source: "seed",
-      });
-
-      if (!stay) {
-        stay = await StayRecord.create({
-          userId: user._id.toString(),
-          userEmail: user.email,
-          userName: user.name,
-          targetType: "hotel",
-          targetId: hotel.id,
-          targetName: hotel.name,
-          districtName: hotel.districtName,
-          status: "completed",
-          checkInDate: "2026-03-01",
-          checkOutDate: "2026-03-03",
-          source: "seed",
-        });
-      }
-
-      const exists = await ServiceReview.findOne({
-        userId: user._id.toString(),
-        stayRecordId: stay._id.toString(),
-      });
-
-      if (!exists) {
-        const review = await ServiceReview.create({
-          userId: user._id.toString(),
-          userName: user.name,
-          stayRecordId: stay._id.toString(),
-          targetType: "hotel",
-          targetId: hotel.id,
-          targetName: hotel.name,
-          districtName: hotel.districtName,
-          rating: hotel.rating,
-          reviewText: hotel.text,
-          isVisible: true,
-          source: "seed",
-        });
-
-        created.push(review);
-      }
-
-      await recalculateProviderRating("hotel", hotel.id, hotel.name);
-    }
-
-    return res.json({
-      message: "Sample hotel review data inserted",
-      insertedCount: created.length,
-      note: "Sample reviews are original seed text for testing.",
-    });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-}
-
-export async function seedDistrictTypeReviews(req, res) {
-  try {
-    const { reviewsPerType = 3, overwriteExisting = false } = req.body || {};
-
-    const summary = await runDistrictReviewSeed({
-      reviewsPerType,
-      overwriteExisting,
-    });
-
-    return res.json({
-      message: "District and type review seed completed",
-      summary,
-    });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-}

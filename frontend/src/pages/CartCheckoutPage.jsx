@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import {
   clearMyCart,
   getMyOrders,
@@ -12,6 +13,7 @@ import { createReview, getMyBookingsForReview } from "../services/reviewService"
 
 export default function CartCheckoutPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [cart, setCart] = useState({ items: [], totalAmount: 0 });
   const [orders, setOrders] = useState([]);
   const [reviewBookings, setReviewBookings] = useState([]);
@@ -182,7 +184,7 @@ export default function CartCheckoutPage() {
   return (
     <main>
       <section className="card review-card-shell">
-        <h2>My Cart</h2>
+        <h2>{user?.name ? `${user.name}'s Cart` : "My Cart"}</h2>
         <p className="section-intro">
           Selected tickets are saved here. Update quantities or remove items before checkout.
         </p>

@@ -27,6 +27,22 @@ const defaultForm = {
   reviewText: "",
 };
 
+function getServiceLabel(targetType) {
+  if (targetType === "localArtisan") {
+    return "Wellness";
+  }
+
+  if (targetType === "hotel") {
+    return "Accommodation";
+  }
+
+  if (targetType === "transport") {
+    return "Transportation";
+  }
+
+  return targetType;
+}
+
 export default function ReviewPage() {
   const { isAuthenticated } = useAuth();
 
@@ -78,7 +94,7 @@ export default function ReviewPage() {
       setMyReviews([]);
     }
   }
-
+// Load public reviews on mount
   useEffect(() => {
     loadPublicReviews();
   }, []);
@@ -87,6 +103,7 @@ export default function ReviewPage() {
     loadPrivateData();
   }, [isAuthenticated]);
 
+// Handle search input changes
   function onChangeSearch(event) {
     const { name, value } = event.target;
     setSearch((prev) => ({ ...prev, [name]: value }));
@@ -176,11 +193,12 @@ export default function ReviewPage() {
     setErrorMessage("");
 
     try {
+      // Basic validation
       const payload = {
         ...form,
         rating: Number(form.rating),
       };
-
+      
       if (editingReviewId) {
         await updateReview(editingReviewId, {
           rating: payload.rating,
@@ -369,7 +387,7 @@ export default function ReviewPage() {
           <>
             {!myBookings.length ? (
               <p className="transport-muted">
-                No booked hotel or transportation found for your account yet.
+                No booked accommodation, wellness, or transportation found for your account yet.
               </p>
             ) : (
               <div className="review-list-grid">
@@ -378,7 +396,7 @@ export default function ReviewPage() {
                     <div>
                       <h4>{booking.targetName}</h4>
                       <p className="transport-muted">
-                        {booking.targetType} | {booking.districtName || "unknown district"}
+                        {getServiceLabel(booking.targetType)} | {booking.districtName || "unknown district"}
                       </p>
                     </div>
                     <p className="transport-muted">Status: {booking.status}</p>
@@ -459,7 +477,7 @@ export default function ReviewPage() {
                   <div>
                     <h4>{review.targetName}</h4>
                     <p className="transport-muted">
-                      {review.targetType} | {review.districtName || "unknown district"}
+                      {getServiceLabel(review.targetType)} | {review.districtName || "unknown district"}
                     </p>
                   </div>
                   <p className="review-rating">{review.rating} / 5</p>

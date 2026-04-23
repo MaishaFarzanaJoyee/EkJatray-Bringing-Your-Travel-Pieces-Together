@@ -1,15 +1,44 @@
 import Stripe from "stripe";
 import mongoose from "mongoose";
+import nodemailer from "nodemailer";
 import UnifiedCart from "./cart.model.js";
 import CheckoutOrder from "./order.model.js";
 import TransportTicket from "../transport/transport.model.js";
 import Destination from "../recommendation/destination.model.js";
 import StayRecord from "../reviewRating/stayRecord.model.js";
 import User from "../auth/user.model.js";
+import Accommodation from "../booking/accommodation.model.js";
+import Wellness from "../booking/wellness.model.js";
+import Notification from "../notification/notification.model.js";
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || "";
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
 const checkoutCurrency = (process.env.CHECKOUT_CURRENCY || "bdt").toLowerCase();
+
+function isSmtpConfigured() {
+  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+}
+
+function getMailTransport() {
+  if (!isSmtpConfigured()) {
+    return null;
+  }
+
+  const port = Number(process.env.SMTP_PORT || 587);
+  const secure = process.env.SMTP_SECURE
+    ? process.env.SMTP_SECURE.toLowerCase() === "true"
+    : port === 465;
+
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port,
+    secure,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+}
 
 function getUserId(req) {
   return req?.user?.userId || "";
@@ -129,7 +158,7 @@ async function createStayRecordsFromPaidOrder(order) {
   const userName = toSafeText(user?.name);
 
   for (const item of order.items) {
-    if (item.providerType !== "hotel" && item.providerType !== "transport") {
+    if (item.providerType !== "hotel" && item.providerType !== "transport" && item.providerType !== "localArtisan") {
       continue;
     }
 
@@ -147,6 +176,115 @@ async function createStayRecordsFromPaidOrder(order) {
       source: "system",
     });
   }
+}
+
+async function createOrderNotifications(order) {
+  if (!order || !Array.isArray(order.items) || !order.userId) {
+    return;
+  }
+
+  const notifications = [
+    {
+      userId: order.userId,
+      title: "Payment confirmed",
+      message: `Payment confirmed for order ${order._id}.`,
+    },
+  ];
+
+  for (const item of order.items) {
+    const serviceType = toSafeText(item.serviceType);
+    const providerType = toSafeText(item.providerType);
+    const itemName = toSafeText(item.itemName) || "Your booking";
+
+    if (providerType === "transport" || serviceType === "transport") {
+      notifications.push({
+        userId: order.userId,
+        title: "Ticket booked",
+        message: `${itemName} has been booked successfully.`,
+      });
+    } else if (providerType === "hotel") {
+      notifications.push({
+        userId: order.userId,
+        title: "Accommodation booked",
+        message: `${itemName} has been booked successfully.`,
+      });
+    } else if (providerType === "localArtisan") {
+      notifications.push({
+        userId: order.userId,
+        title: "Wellness booked",
+        message: `${itemName} has been booked successfully.`,
+      });
+    }
+  }
+
+  await Notification.insertMany(notifications);
+}
+
+function getReadableServiceName(item = {}) {
+  const providerType = toSafeText(item.providerType);
+  const serviceType = toSafeText(item.serviceType);
+
+  if (providerType === "transport" || serviceType === "transport") {
+    return "Transportation";
+  }
+
+  if (providerType === "hotel") {
+    return "Accommodation";
+  }
+
+  if (providerType === "localArtisan") {
+    return "Wellness";
+  }
+
+  return "Service";
+}
+
+async function sendOrderConfirmationEmail(order) {
+  if (!order?.userId || !Array.isArray(order.items) || !order.items.length) {
+    return { sent: false, reason: "ORDER_NOT_ELIGIBLE" };
+  }
+
+  const user = await User.findById(order.userId).select("name email");
+  const to = toSafeText(user?.email).toLowerCase();
+
+  if (!to) {
+    return { sent: false, reason: "USER_EMAIL_MISSING" };
+  }
+
+  const transporter = getMailTransport();
+  if (!transporter) {
+    return { sent: false, reason: "SMTP_NOT_CONFIGURED" };
+  }
+
+  const orderId = toSafeText(order._id);
+  const customerName = toSafeText(user?.name) || "Traveler";
+  const from = process.env.MAIL_FROM || process.env.SMTP_USER;
+  const lines = order.items.map((item) => {
+    const name = toSafeText(item.itemName) || "Booked service";
+    const quantity = Math.max(1, toSafeNumber(item.quantity, 1));
+    const price = toSafeNumber(item.price, 0);
+    const currency = (toSafeText(item.currency) || checkoutCurrency || "bdt").toUpperCase();
+    const service = getReadableServiceName(item);
+    return `- ${service}: ${name} x${quantity} (${price} ${currency})`;
+  });
+
+  await transporter.sendMail({
+    from,
+    to,
+    subject: `EkJatray booking confirmed - Order ${orderId}`,
+    text: [
+      `Hello ${customerName},`,
+      "",
+      `Your payment is confirmed and your booking is successful for order ${orderId}.`,
+      "",
+      "Booked items:",
+      ...lines,
+      "",
+      "Thank you for using EkJatray.",
+    ].join("\n"),
+  });
+
+  return { sent: true };
 }
 
 async function markStayRecordsCompleted(order) {
@@ -202,27 +340,40 @@ export async function addTransportItemToCart(req, res) {
       return res.status(404).json({ message: "Transport ticket not found" });
     }
 
+    const cart = await getOrCreateCart(userId);
     const safeQuantity = Math.max(1, toSafeNumber(quantity, 1));
-    if (safeQuantity > Number(ticket.seatsAvailable)) {
+    const existingItem = cart.items.find(
+      (item) => item.providerType === "transport" && toSafeText(item.sourceId) === ticket._id.toString()
+    );
+    const nextQuantity = existingItem ? Number(existingItem.quantity) + safeQuantity : safeQuantity;
+
+    if (nextQuantity > Number(ticket.seatsAvailable)) {
       return res.status(400).json({
         message: `Only ${ticket.seatsAvailable} seats are available for this ticket`,
       });
     }
 
-    const cart = await getOrCreateCart(userId);
-    cart.items.push({
-      serviceType: "transport",
-      providerType: "transport",
-      providerName: toSafeText(ticket.operator),
-      itemName: toSafeText(ticket.title),
-      sourceModule: "transport",
-      sourceId: ticket._id.toString(),
-      quantity: safeQuantity,
-      price: Math.max(0, toSafeNumber(ticket.price, 0)),
-      travelDate: toSafeText(ticket.travelDate),
-      route: `${toSafeText(ticket.origin)} to ${toSafeText(ticket.destination)}`,
-      status: "pending",
-    });
+    if (existingItem) {
+      existingItem.quantity = nextQuantity;
+      existingItem.price = Math.max(0, toSafeNumber(ticket.price, 0));
+      existingItem.travelDate = toSafeText(ticket.travelDate);
+      existingItem.route = `${toSafeText(ticket.origin)} to ${toSafeText(ticket.destination)}`;
+      existingItem.status = "pending";
+    } else {
+      cart.items.push({
+        serviceType: "transport",
+        providerType: "transport",
+        providerName: toSafeText(ticket.operator),
+        itemName: toSafeText(ticket.title),
+        sourceModule: "transport",
+        sourceId: ticket._id.toString(),
+        quantity: safeQuantity,
+        price: Math.max(0, toSafeNumber(ticket.price, 0)),
+        travelDate: toSafeText(ticket.travelDate),
+        route: `${toSafeText(ticket.origin)} to ${toSafeText(ticket.destination)}`,
+        status: "pending",
+      });
+    }
 
     cart.totalAmount = calculateTotal(cart.items);
     await cart.save();
@@ -266,6 +417,119 @@ export async function addExperienceItemToCart(req, res) {
     await cart.save();
 
     return res.status(201).json({ message: "Experience item added to cart", cart });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+}
+
+export async function addAccommodationItemToCart(req, res) {
+  try {
+    const userId = getUserId(req);
+    const { accommodationId, quantity = 1 } = req.body;
+
+    if (!accommodationId || !mongoose.Types.ObjectId.isValid(accommodationId)) {
+      return res.status(400).json({ message: "Valid accommodationId is required" });
+    }
+
+    const accommodation = await Accommodation.findById(accommodationId);
+    if (!accommodation) {
+      return res.status(404).json({ message: "Accommodation not found" });
+    }
+
+    const cart = await getOrCreateCart(userId);
+    const safeQuantity = Math.max(1, toSafeNumber(quantity, 1));
+
+    const existingItem = cart.items.find(
+      (item) =>
+        item.providerType === "hotel" &&
+        item.sourceModule === "booking" &&
+        toSafeText(item.sourceId) === accommodation._id.toString()
+    );
+
+    if (existingItem) {
+      existingItem.quantity = Number(existingItem.quantity) + safeQuantity;
+      existingItem.price = Math.max(0, toSafeNumber(accommodation.price, 0));
+      existingItem.providerName = toSafeText(accommodation.name);
+      existingItem.itemName = toSafeText(accommodation.name);
+      existingItem.route = toSafeText(accommodation.location);
+      existingItem.status = "pending";
+    } else {
+      cart.items.push({
+        serviceType: "hotel",
+        providerType: "hotel",
+        providerName: toSafeText(accommodation.name),
+        itemName: toSafeText(accommodation.name),
+        sourceModule: "booking",
+        sourceId: accommodation._id.toString(),
+        quantity: safeQuantity,
+        price: Math.max(0, toSafeNumber(accommodation.price, 0)),
+        travelDate: "",
+        route: toSafeText(accommodation.location),
+        status: "pending",
+      });
+    }
+
+    cart.totalAmount = calculateTotal(cart.items);
+    await cart.save();
+
+    return res.status(201).json({ message: "Accommodation added to cart", cart });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+}
+
+export async function addWellnessItemToCart(req, res) {
+  try {
+    const userId = getUserId(req);
+    const { wellnessId, quantity = 1 } = req.body;
+
+    if (!wellnessId || !mongoose.Types.ObjectId.isValid(wellnessId)) {
+      return res.status(400).json({ message: "Valid wellnessId is required" });
+    }
+
+    const wellness = await Wellness.findById(wellnessId);
+    if (!wellness) {
+      return res.status(404).json({ message: "Wellness center not found" });
+    }
+
+    const cart = await getOrCreateCart(userId);
+    const safeQuantity = Math.max(1, toSafeNumber(quantity, 1));
+
+    const existingItem = cart.items.find(
+      (item) =>
+        item.providerType === "localArtisan" &&
+        item.sourceModule === "booking" &&
+        toSafeText(item.sourceId) === wellness._id.toString()
+    );
+
+    if (existingItem) {
+      existingItem.quantity = Number(existingItem.quantity) + safeQuantity;
+      existingItem.price = Math.max(0, toSafeNumber(wellness.consultationFee, 0));
+      existingItem.providerName = toSafeText(wellness.centerName);
+      existingItem.itemName = toSafeText(wellness.centerName);
+      existingItem.route = toSafeText(wellness.location);
+      existingItem.status = "pending";
+    } else {
+      cart.items.push({
+        serviceType: "experience",
+        providerType: "localArtisan",
+        providerName: toSafeText(wellness.centerName),
+        itemName: toSafeText(wellness.centerName),
+        sourceModule: "booking",
+        sourceId: wellness._id.toString(),
+        quantity: safeQuantity,
+        price: Math.max(0, toSafeNumber(wellness.consultationFee, 0)),
+        travelDate: "",
+        route: toSafeText(wellness.location),
+        notes: `${toSafeText(wellness.practitionerName)} | ${toSafeText(wellness.specialty)}`,
+        status: "pending",
+      });
+    }
+
+    cart.totalAmount = calculateTotal(cart.items);
+    await cart.save();
+
+    return res.status(201).json({ message: "Wellness consultation added to cart", cart });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -534,6 +798,13 @@ export async function handleStripeWebhook(req, res) {
         await deductTransportSeatsAfterPayment(order.items);
 
         await createStayRecordsFromPaidOrder(order);
+
+        await createOrderNotifications(order);
+
+        const mailResult = await sendOrderConfirmationEmail(order);
+        if (!mailResult.sent && mailResult.reason !== "SMTP_NOT_CONFIGURED") {
+          console.warn(`[Checkout email skipped] Reason: ${mailResult.reason} for order ${order._id}`);
+        }
       }
 
       if (userId) {
