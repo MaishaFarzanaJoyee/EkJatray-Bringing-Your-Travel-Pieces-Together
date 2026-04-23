@@ -11,6 +11,10 @@ import ReviewPage from "./pages/ReviewPage";
 import CartCheckoutPage from "./pages/CartCheckoutPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import CheckoutSuccessPage from "./pages/CheckoutSuccessPage";
+import RecommendationPage from "./pages/RecommendationPage";
+import WeatherPlannerPage from "./pages/WeatherPlannerPage";
+import WellnessBookingPage from "./pages/WellnessBookingPage";
+import NotificationsPage from "./pages/NotificationsPage";
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -93,6 +97,24 @@ function App() {
             <AdminRoute>
               <AdminPage />
             </AdminRoute>
+          }
+        />
+        <Route path="/recommendations" element={<RecommendationPage />} />
+        <Route path="/weather" element={<WeatherPlannerPage />} />
+        <Route
+          path="/wellness"
+          element={
+            <ProtectedRoute>
+              <WellnessBookingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <NotificationsPage />
+            </ProtectedRoute>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />

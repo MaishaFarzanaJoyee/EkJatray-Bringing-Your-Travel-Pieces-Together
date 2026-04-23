@@ -13,6 +13,8 @@ import localDiscoveryRoutes from "./modules/localDiscovery/localDiscovery.routes
 import itineraryRoutes from "./modules/itinerary/itinerary.routes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
 import cors from "cors";
+import bookingRoutes from "./modules/booking/booking.routes.js";
+import notificationRoutes from "./modules/notification/notification.routes.js";
 
 // Create the Express app.
 const app = express();
@@ -53,6 +55,11 @@ app.use("/api/safety-contacts", safetyRoutes);
 app.use("/api/local-discovery", localDiscoveryRoutes);
 app.use("/api/itineraries", itineraryRoutes);
 app.use("/api/admin", adminRoutes);
+
+app.use("/api/booking", bookingRoutes);
+
+// Connect notification API routes.
+app.use("/api/notifications", notificationRoutes);
 
 if (hasFrontendBuild) {
   // Serve React production build files.

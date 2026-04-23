@@ -82,7 +82,84 @@ export default function HomePage() {
   const [summaryText, setSummaryText] = useState("Use the filters above to find tickets.");
   const [ticketSelections, setTicketSelections] = useState({});
   const [cartNotice, setCartNotice] = useState({ type: "", text: "" });
-// Load initial tickets on mount
+  const safetyCategoryOptions = [
+    { value: "all", label: "All Categories" },
+    { value: "tourist-police", label: "Tourist Police" },
+    { value: "hospital", label: "Hospital" },
+    { value: "guide", label: "Guide" },
+    { value: "embassy", label: "Embassy" },
+    { value: "transport-help", label: "Transport Help" },
+    { value: "general-emergency", label: "General Emergency" },
+  ];
+  const localDiscoveryPlanKey = "ekjatrayLocalDiscoveryPlan";
+  const [localDiscoveryForm, setLocalDiscoveryForm] = useState({
+    destination: "Cox's Bazar",
+    type: "all",
+    category: "",
+    search: "",
+    maxPrice: "",
+  });
+  const [localLoading, setLocalLoading] = useState(false);
+  const [localSummary, setLocalSummary] = useState("Search local rentals and workshops for your destination.");
+  const [localItems, setLocalItems] = useState([]);
+  const [localPlan, setLocalPlan] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem(localDiscoveryPlanKey);
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      return [];
+    }
+  });
+
+  const [safetyForm, setSafetyForm] = useState({
+    destination: "Cox's Bazar",
+    category: "all",
+    search: "",
+  });
+  const [safetyLoading, setSafetyLoading] = useState(false);
+  const [safetySummary, setSafetySummary] = useState("Search trusted local contacts for your destinations.");
+  const [safetyContacts, setSafetyContacts] = useState([]);
+
+  const localDiscoveryTypeOptions = [
+    { value: "all", label: "All" },
+    { value: "car", label: "Car Rental" },
+    { value: "microbus", label: "Microbus" },
+    { value: "workshop", label: "Workshop" },
+    { value: "tour", label: "Tour Experience" },
+  ];
+
+  function getLocalTypeLabel(value) {
+    if (!value) return "Local";
+    const option = localDiscoveryTypeOptions.find((item) => item.value === value);
+    return option ? option.label : value.charAt(0).toUpperCase() + value.slice(1);
+  }
+
+  function getLocalItemKey(item) {
+    return item?.planId || item?.id || `${item?.type || "local"}-${item?.destination || "unknown"}`;
+  }
+
+  function getSafetyCategoryLabel(category) {
+    if (!category) return "Support";
+    return category.charAt(0).toUpperCase() + category.slice(1);
+  }
+
+  function getPhoneHref(phone) {
+    if (!phone) return "#";
+    const cleaned = phone.toString().replace(/[^0-9+]/g, "");
+    return `tel:${cleaned}`;
+  }
+
+  function getWhatsappHref(whatsapp, destination) {
+    if (!whatsapp) return "#";
+    const cleaned = whatsapp.toString().replace(/[^0-9]/g, "");
+    const text = encodeURIComponent(`Hello, I would like help for ${destination || "my trip"}.`);
+    return `https://wa.me/${cleaned}?text=${text}`;
+  }
+
+  function getSosHref(phone, destination) {
+    return getWhatsappHref(phone, destination);
+  }
+
   useEffect(() => {
     sessionStorage.setItem(localDiscoveryPlanKey, JSON.stringify(localPlan));
   }, [localPlan]);

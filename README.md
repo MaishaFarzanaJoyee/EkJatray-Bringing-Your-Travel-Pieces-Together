@@ -65,7 +65,7 @@ This system provides an all-in-one platform where users can manage destinations,
 * **Unified Cart & Secure Checkout:** Aggregates transport, lodging, and experiences into a single Stripe-powered payment gateway for reduced transaction fees.
 * **Dynamic Itinerary & Offline QR Pass:** Automatically generates a chronological trip timeline upon checkout, including a scannable offline QR code for network-free schedule access.
 * **Contextual Weather, Packing, & Location Integration:** Generates AI-driven packing checklists based on real-time weather data and visualizes distances between booked hotels and attractions.
-* **Automated Notifications & Alerts:** Dispatches automated SendGrid emails for booking confirmations, payment receipts, and critical itinerary changes.
+* **Automated Notifications & Alerts:** Dispatches automated in app notifications for booking confirmations, payment receipts, and critical itinerary changes.
 * **Review & Rating System:** Allows travelers to evaluate completed trips with a 1-to-5 star rating and text review system for public provider profiles.
 * **Admin Operations & Analytics:** Dashboard for tracking bookings, revenue, managing predefined tour spots, and moderating reviews or non-compliant accounts.
 
