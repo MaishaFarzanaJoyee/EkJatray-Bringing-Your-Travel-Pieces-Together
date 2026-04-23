@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import User from "../modules/auth/user.model.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -6,7 +7,7 @@ if (!JWT_SECRET) {
   throw new Error("Missing JWT_SECRET in environment variables");
 }
 
-export const requireAuth = (req, res, next) => {
+export const requireAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization || "";
 
@@ -16,7 +17,22 @@ export const requireAuth = (req, res, next) => {
 
     const token = authHeader.slice(7);
     const decoded = jwt.verify(token, JWT_SECRET);
+
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    if (user.isSuspended) {
+      return res.status(403).json({
+        message: user.suspensionReason
+          ? `Account suspended: ${user.suspensionReason}`
+          : "Account suspended",
+      });
+    }
+
     req.user = decoded;
+    req.user.isSuspended = user.isSuspended;
 
     return next();
   } catch {

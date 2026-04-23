@@ -5,6 +5,8 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
+    "seed:safety": "node src/modules/safety/seedSafetyContacts.script.js",
+    "seed:local-discovery": "node src/modules/localDiscovery/seedLocalDiscovery.script.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

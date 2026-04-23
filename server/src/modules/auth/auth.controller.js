@@ -94,6 +94,14 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    if (user.isSuspended) {
+      return res.status(403).json({
+        message: user.suspensionReason
+          ? `Account suspended: ${user.suspensionReason}`
+          : "Account suspended",
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, user.passwordHash);
 
     if (!isMatch) {
@@ -124,6 +132,7 @@ export const me = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role || "user",
+      isSuspended: Boolean(user.isSuspended),
     },
   });
 };

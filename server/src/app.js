@@ -8,6 +8,10 @@ import transportRoutes from "./modules/transport/transport.routes.js";
 import recommendationRoutes from "./modules/recommendation/recommendation.routes.js";
 import cartCheckoutRoutes, { handleStripeWebhook } from "./modules/cartCheckout/cartCheckout.routes.js";
 import reviewRatingRoutes from "./modules/reviewRating/reviewRating.routes.js";
+import safetyRoutes from "./modules/safety/safety.routes.js";
+import localDiscoveryRoutes from "./modules/localDiscovery/localDiscovery.routes.js";
+import itineraryRoutes from "./modules/itinerary/itinerary.routes.js";
+import adminRoutes from "./modules/admin/admin.routes.js";
 import cors from "cors";
 
 // Create the Express app.
@@ -45,6 +49,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/reviews", reviewRatingRoutes);
 app.use("/api/cart-checkout", cartCheckoutRoutes);
+app.use("/api/safety-contacts", safetyRoutes);
+app.use("/api/local-discovery", localDiscoveryRoutes);
+app.use("/api/itineraries", itineraryRoutes);
+app.use("/api/admin", adminRoutes);
 
 if (hasFrontendBuild) {
   // Serve React production build files.
