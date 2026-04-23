@@ -192,7 +192,7 @@ export async function getMyBookingsForReview(req, res) {
 
     const bookings = await StayRecord.find({
       userId,
-      targetType: { $in: ["hotel", "transport"] },
+      targetType: { $in: ["hotel", "transport", "localArtisan"] },
       status: { $in: REVIEW_ALLOWED_STATUS },
     }).sort({ updatedAt: -1 }); // most recent first
 

@@ -1,10 +1,10 @@
 import jwt from "jsonwebtoken";
 import User from "../modules/auth/user.model.js";
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || "dev-jwt-secret-change-me";
 
-if (!JWT_SECRET) {
-  throw new Error("Missing JWT_SECRET in environment variables");
+if (!process.env.JWT_SECRET) {
+  console.warn("[auth] JWT_SECRET is missing. Using a temporary development secret.");
 }
 
 export const requireAuth = async (req, res, next) => {
