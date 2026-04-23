@@ -75,6 +75,3 @@ if (hasFrontendBuild) {
 }
 
 export default app;
-
-export default app;
->>>>>>> Joyee

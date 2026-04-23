@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getRecommendations } from "../services/joyeeService";
 
-export default function JoyeeRecommendationPage() {
+export default function RecommendationPage() {
   const [budget, setBudget] = useState("");
   const [tags, setTags] = useState("");
   const [destinations, setDestinations] = useState([]);

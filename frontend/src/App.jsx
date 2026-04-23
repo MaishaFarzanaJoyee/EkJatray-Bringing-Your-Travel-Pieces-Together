@@ -11,7 +11,7 @@ import ReviewPage from "./pages/ReviewPage";
 import CartCheckoutPage from "./pages/CartCheckoutPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import CheckoutSuccessPage from "./pages/CheckoutSuccessPage";
-import JoyeeRecommendationPage from "./pages/JoyeeRecommendationPage";
+import RecommendationPage from "./pages/RecommendationPage";
 import WeatherPlannerPage from "./pages/WeatherPlannerPage";
 import WellnessBookingPage from "./pages/WellnessBookingPage";
 import NotificationsPage from "./pages/NotificationsPage";
@@ -99,7 +99,7 @@ function App() {
             </AdminRoute>
           }
         />
-        <Route path="/recommendations" element={<JoyeeRecommendationPage />} />
+        <Route path="/recommendations" element={<RecommendationPage />} />
         <Route path="/weather" element={<WeatherPlannerPage />} />
         <Route
           path="/wellness"
