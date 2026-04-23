@@ -33,6 +33,22 @@ export default function Navbar() {
           Reviews
         </NavLink>
 
+        <NavLink to="/recommendations" className={linkClass}>
+          Recommendations
+        </NavLink>
+
+        <NavLink to="/weather" className={linkClass}>
+          Weather Planner
+        </NavLink>
+
+        <NavLink to="/wellness" className={linkClass}>
+          Wellness
+        </NavLink>
+
+        <NavLink to="/notifications" className={linkClass}>
+          Notifications
+        </NavLink>
+
         {!isAuthenticated && (
           <>
             <NavLink to="/login" className={linkClass}>
